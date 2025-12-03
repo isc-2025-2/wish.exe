@@ -16,7 +16,11 @@ let targetLum = null;
 
 let factLoading = null;
 
+let mode = "main";      // "main" 또는 "intro"
+let introFrame = 0;
+let textCount = 0;
 
+let dragImage_1;
 
 
 const emotionColors = {
@@ -185,18 +189,13 @@ function stars_loc() {
   }));
 }
 
-let mode = "main";      // "main" 또는 "intro"
-let introFrame = 0;
-let textCount = 0;
-
-let dragImage_1;
 
 function preload() {
-  imageMode(CENTER)
   dragImage_1 = loadImage('images/dragImage_1.png');
 }
 
 function setup() {
+  imageMode(CENTER);
   createCanvas(windowWidth, windowHeight);
 }
 
@@ -597,7 +596,7 @@ function input_4(){
 
 function drag_stars(){
   if (dragImage_1) {
-    image(dragImage_1, width * 0.5, height * 0.5);
+    image(dragImage_1, width / 2, height / 2, 300, 300);
   } else {
     fill(255);
     textAlign(CENTER, CENTER);
@@ -605,7 +604,6 @@ function drag_stars(){
     text("이미지를 불러오는 중입니다...", width / 2, height / 2);
   }
   renderMainStars();
-
 }
 
 function last(){
