@@ -17,8 +17,6 @@ let targetLum = null;
 let factLoading = null;
 
 
-
-
 const emotionColors = {
   0: { r:180, g:200, b:255 },
   1: { r:90,  g:90,  b:160 },
@@ -188,13 +186,6 @@ function stars_loc() {
 let mode = "main";      // "main" 또는 "intro"
 let introFrame = 0;
 let textCount = 0;
-
-let dragImage_1;
-
-function preload() {
-  imageMode(CENTER)
-  dragImage_1 = loadImage('images/dragImage_1.png');
-}
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -593,18 +584,8 @@ function input_4(){
   emotionResult = null;
 }
 
-
-
 function drag_stars(){
-  if (dragImage_1) {
-    image(dragImage_1, width * 0.5, height * 0.5);
-  } else {
-    fill(255);
-    textAlign(CENTER, CENTER);
-    textSize(24);
-    text("이미지를 불러오는 중입니다...", width / 2, height / 2);
-  }
-  renderMainStars();
+  renderMainStars()
 
 }
 
