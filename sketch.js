@@ -15,11 +15,20 @@ let starLumIndex = 0;
 let targetLum = null;
 
 let factLoading = null;
+let transitioning = false;
 
 let stars = [];
 let draggedStarIndex = -1;
 let targetPositions = [];
 const SNAP_THRESHOLD = 60;
+
+// //참가자들 별자리 저장
+// const MAX_USER_STARS = 5;
+// let userStars = [];
+// let lastStarSaved = false;
+
+
+let resetScheduled = false;
 
 
 const emotionColors = {
@@ -293,6 +302,7 @@ function backgroundStar() {
     fill(s.brightness);
     ellipse(s.x, s.y, s.size, s.size);
   }
+  // renderSavedStars()
 }
 
 // 메인
@@ -656,6 +666,16 @@ function mousePressed() {
         break;
       }
     }
+  } else if (mode === "last") {
+    const btnX = width - width * 0.15;
+    const btnY = 100;
+    const btnW = width * 0.1;
+    const btnH = height * 0.1;
+
+    if (mouseX > btnX && mouseX < btnX + btnW &&
+        mouseY > btnY && mouseY < btnY + btnH) {
+      hardResetToMain();
+    }
   }
 }
 
@@ -705,8 +725,7 @@ function checkStarsComplete() {
   return matched === targetPositions.length;
 }
 
-
-function drag_stars(){
+function draw_dragImage() {
   if (dragImage_1 && dragImage_1.width > 0) {
     const originalW = dragImage_1.width;
     const originalH = dragImage_1.height;
@@ -724,14 +743,23 @@ function drag_stars(){
     textSize(24);
     text("이미지를 불러오는 중입니다...", width / 2, height / 2);
   }
+}
+
+function drag_stars(){
+  draw_dragImage();
   renderMainStars();
   renderStarsTargets();
-
   renderDragInstruction();
 
-  if (checkStarsComplete()) {
-    mode = "last"
+  if (checkStarsComplete() && !transitioning)  {
+    transitioning = true;
+    goToLastMode();
   }
+}
+
+async function goToLastMode() {
+  await delay(3000); // 3초 기다림
+  mode = "last";
 }
 
 function renderDragInstruction() {
@@ -746,30 +774,145 @@ function renderDragInstruction() {
 function renderStarsTargets() {
   if (!targetPositions || targetPositions.length === 0) return;
 
-  noStroke();
-  fill(255, 255, 255, 180); // 약간 투명한 흰색 원
+//   noStroke();
+//   fill(255, 255, 255, 180); // 약간 투명한 흰색 원
 
-  for (let t of targetPositions) {
-    ellipse(t.x, t.y, 20, 20);   // 지름 20 원
-  }
+//   for (let t of targetPositions) {
+//     ellipse(t.x, t.y, 20, 20);   // 지름 20 원
+//   }
 }
 
 function last(){
   //최종화면
-  //QR 이미지
+  backgroundStar();
+  draw_dragImage();
+  renderMainStars();
+  // renderStarsLines(stars);
+
+  // if (!lastStarSaved){
+  //   saveCurrentStar();
+  //   lastStarSaved = true;
+  // }
+  
   radar_chart()
-  reset()
-  //일정시간 지나면 메인화면으로 전환
-  text('실행 확인.', width / 2, height * 0.8);
+  reset(); //일정시간 지나면 메인화면으로 전환
 }
+
+// function saveCurrentStar() {
+//   if (!stars || stars.length == 0) return;
+
+//   const user = stars.map(s => ({
+//     x: s.x,
+//     y: s.y,
+//     color: { ...s.color },
+//     lum: s.lum
+//   }));
+
+//   userStars.push(user);
+
+//   if (userStars.length > MAX_USER_STARS) {
+//     userStars.shift();
+//   }
+// }
+
+// function renderStarsLines(starsArray) {
+//   if (!starsArray || starsArray.length < 2) return;
+
+//   noFill();
+//   stroke(255, 255, 255, 180);
+//   strokeWeight(2);
+
+//   beginShape();
+//   for (let s of starsArray) {
+//     vertex(s.x, s.y);
+//   }
+//   endShape();
+// }
+
+// function renderSavedStars() {
+//   if (!userStars || userStars.length === 0) return;
+
+//   for (let user of userStars){
+//     if (!user || user.length < 2) continue;
+
+//     noFill();
+//     stroke(255, 255, 255, 40);   
+//     strokeWeight(1);
+//     beginShape();
+//     for (let p of user) {
+//       vertex(p.x, p.y);
+//     }
+//     endShape();
+
+//     // 점
+//     noStroke();
+//     for (let p of user) {
+//       fill(255, 255, 255, 70);
+//       ellipse(p.x, p.y, 4, 4);
+//     }
+//   }
+// }
+
 
 function radar_chart(){
   //레이더 차트
 }
 
 function reset(){
-  //초기화버튼
+  
+
+
+  fill(255);
+  const btnX = width - width * 0.15;
+  const btnY = 100;
+  const btnW = width * 0.1;
+  const btnH = height * 0.1;
+
+  rect(btnX, btnY, btnW, btnH, 10);
+
+  fill(0);
+  textAlign(CENTER, CENTER);
+  textSize(18);
+  text('처음으로', btnX + btnW / 2, btnY + btnH / 2);
+  text('15초 후 자동으로 처음 화면으로 돌아갑니다.', btnX + btnW / 2, (btnY + btnH / 2) * 0.5);
+  if (!resetScheduled) {
+    resetScheduled = true;
+    setTimeout(() => {
+      hardResetToMain();
+    }, 15000);
+  }
 }
 
+
+function hardResetToMain() {
+  userInput = "";
+  back_stars = [];
+  loadingProgress = 0;
+  loadingStartTime = 0;
+
+  isCallingLLM = false;
+  emotionResult = null;
+  hasCalledLLM = false;
+
+  starColorIndex = 0;
+  targetColor = null;
+
+  starLumIndex = 0;
+  targetLum = null;
+
+  factLoading = null;
+
+  stars = [];
+  draggedStarIndex = -1;
+  targetPositions = [];
+
+  collectedEmotions.length = 0;
+
+  transitioning = false;
+  resetScheduled = false;
+  // lastStarSaved = false;
+
+  mode = "main";
+}
 
 
