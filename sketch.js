@@ -25,6 +25,7 @@ let targetPositions = [];
 const SNAP_THRESHOLD = 60;
 
 let isRadarAnimating = false;
+let timer;
 
 // //참가자들 별자리 저장
 // const MAX_USER_STARS = 5;
@@ -1030,7 +1031,7 @@ function reset(){
   text('15초 후 자동으로 처음 화면으로 돌아갑니다.', btnX + btnW / 2, (btnY + btnH / 2) * 0.5);
   if (!resetScheduled) {
     resetScheduled = true;
-    setTimeout(() => {
+    timer = setTimeout(() => {
       hardResetToMain();
     }, 15000);
   }
@@ -1038,6 +1039,7 @@ function reset(){
 
 
 function hardResetToMain() {
+  clearTimeout(timer);
   userInput = "";
   back_stars = [];
   loadingProgress = 0;
