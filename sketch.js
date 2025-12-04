@@ -77,7 +77,7 @@ const UPLOAD_API_URL = "https://p5-llm-server.vercel.app/api/upload";
 const SYSTEM_PROMPT = `
 You are an emotion classifier for an art installation.
 Your ONLY job is to read the user's input text and classify it
-into a SINGLE emotion ID from 0 to 5.
+into a SINGLE emotion ID from 0 to 4.
 
 EMOTION MAPPING (fixed):
 0 = Calm / Neutral
@@ -109,7 +109,7 @@ User: "올해 너무 힘들었는데 그래도 버텼어요."
 Return: {"emotion": 2}
 
 User: "혼란스럽고 뭐가 맞는지 모르겠어요."
-Return: {"emotion": 5}
+Return: {"emotion": 3}
 
 User: "그냥 담담한 하루였어요."
 Return: {"emotion": 0}
