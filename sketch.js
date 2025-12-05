@@ -8,6 +8,8 @@ let isCallingLLM = false;
 let emotionResult = null;
 let hasCalledLLM = false;
 
+let hasUploadedCapture = false;
+
 let starColorIndex = 0;
 let targetColor = null;
 
@@ -22,14 +24,36 @@ let draggedStarIndex = -1;
 let targetPositions = [];
 const SNAP_THRESHOLD = 60;
 
+let isRadarAnimating = false;
+let timer;
+
 // //참가자들 별자리 저장
 // const MAX_USER_STARS = 5;
 // let userStars = [];
 // let lastStarSaved = false;
 
-
+let qrcode;
+let qrcodeElement;
 let resetScheduled = false;
 
+function uploadCapture(base64) {
+  if (!base64 || hasUploadedCapture) return;
+  hasUploadedCapture = true;
+
+  fetch(UPLOAD_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ image: base64 })
+  })
+  .then(res => res.json())
+  .then(data => {
+    console.log("업로드된 이미지 URL:", data.url);
+    qrcode.makeCode(data.url);
+    qrcodeElement.style.opacity = 1;
+  });
+}
 
 const emotionColors = {
   0: { r:180, g:200, b:255 },
@@ -50,12 +74,29 @@ const emotionLums = {
 
 const collectedEmotions = [];
 
+const totalEmotions = {
+  0: 0,
+  1: 0,
+  2: 0,
+  3: 0,
+  4: 0,
+}
+
+const currentEmotions = {
+  0: 0,
+  1: 0,
+  2: 0,
+  3: 0,
+  4: 0,
+}
+
 const LLM_API_URL = "https://p5-llm-server.vercel.app/api/llm"
+const UPLOAD_API_URL = "https://p5-llm-server.vercel.app/api/upload";
 
 const SYSTEM_PROMPT = `
 You are an emotion classifier for an art installation.
 Your ONLY job is to read the user's input text and classify it
-into a SINGLE emotion ID from 0 to 5.
+into a SINGLE emotion ID from 0 to 4.
 
 EMOTION MAPPING (fixed):
 0 = Calm / Neutral
@@ -87,7 +128,7 @@ User: "올해 너무 힘들었는데 그래도 버텼어요."
 Return: {"emotion": 2}
 
 User: "혼란스럽고 뭐가 맞는지 모르겠어요."
-Return: {"emotion": 5}
+Return: {"emotion": 3}
 
 User: "그냥 담담한 하루였어요."
 Return: {"emotion": 0}
@@ -215,6 +256,13 @@ function preload() {
 function setup() {
   createCanvas(windowWidth, windowHeight);
   imageMode(CENTER);
+  qrcode = new QRCode(document.getElementById("qrcode"), {
+    text: "",
+    width: 128,
+    height: 128
+  });
+  qrcodeElement = document.getElementById("qrcode");
+  angleMode(DEGREES);
 }
 
 function draw() {
@@ -466,6 +514,7 @@ function loading_2(){
     callLLM(SYSTEM_PROMPT, userInput).then(async result => {
       try {
         emotionResult = JSON.parse(result).emotion;
+        totalEmotions[emotionResult]+=10;
         collectedEmotions.push(emotionResult);
         targetColor = emotionColors[emotionResult];
       } catch (e) {
@@ -547,6 +596,7 @@ function loading_3(){
       try {
         emotionResult = JSON.parse(result).emotion;
         collectedEmotions.push(emotionResult);
+        totalEmotions[emotionResult]+=10;
         targetLum = emotionLums[emotionResult];
       } catch (e) {
         console.error("JSON parse error:", result);
@@ -745,6 +795,16 @@ function draw_dragImage() {
   }
 }
 
+function getDragImageXBounds() {
+  const scaledW = width * 0.7;
+  const cx = width / 2;
+  
+  const startX = Math.floor(cx - scaledW / 2);  // 시작 x좌표
+  const endX = Math.floor(cx + scaledW / 2);    // 끝 x좌표
+  
+  return { startX, endX, centerX: cx, width: scaledW };
+}
+
 function drag_stars(){
   draw_dragImage();
   renderMainStars();
@@ -787,16 +847,52 @@ function last(){
   backgroundStar();
   draw_dragImage();
   renderMainStars();
+
   // renderStarsLines(stars);
 
   // if (!lastStarSaved){
   //   saveCurrentStar();
   //   lastStarSaved = true;
   // }
+
+  // userInput을 text로 표시
+
+  textSize(24);
+  textAlign(CENTER, CENTER);
+  fill(255);
+  text(userInput, width / 2, height * 0.8);
+
+  let cropped = get(getDragImageXBounds().startX, 0, getDragImageXBounds().width, windowHeight);
+  let base64 = cropped.canvas.toDataURL("image/png");
+  uploadCapture(base64);
+
+  if (!isRadarAnimating) isRadarAnimating = true;
   
+  if (isRadarAnimating) {
+    updateRadarValues();
+  }
+
   radar_chart()
   reset(); //일정시간 지나면 메인화면으로 전환
 }
+
+
+function updateRadarValues() {
+  for (let key in currentEmotions) {
+    currentEmotions[key] = lerp(
+      currentEmotions[key],
+      totalEmotions[key],
+      0.05
+    );
+
+    if (abs(currentEmotions[key] - totalEmotions[key]) < 0.1) {
+      currentEmotions[key] = totalEmotions[key];
+    }
+  }
+
+  if (Object.keys(currentEmotions).every(k => currentEmotions[k] === totalEmotions[k])) isRadarAnimating = false;
+}
+
 
 // function saveCurrentStar() {
 //   if (!stars || stars.length == 0) return;
@@ -856,11 +952,69 @@ function last(){
 
 function radar_chart(){
   //레이더 차트
+  stroke(200);
+  strokeWeight(1);
+  let x = width * 0.12;
+  let y = height * 0.8;
+
+  for (let i = 0; i < 6; i++) {
+    let r1 = 100;
+    let r2 = 20
+
+    let dx = r1 * cos(i * 72 - 90);
+    let dy = r1 * sin(i * 72 - 90);
+
+    line(x, y, x + dx, y + dy);
+
+    for (let j = 0; j < 5; j++) {
+
+      let dxax = r2 * cos(i * 72 - 90);
+      let dyax = r2 * sin(i * 72 - 90);
+
+      let nextdxax = r2 * cos((i + 1) * 72 - 90);
+      let nextdyax = r2 * sin((i + 1) * 72 - 90);
+
+      line(x + dxax, y + dyax, x + nextdxax, y + nextdyax);
+
+      r2 = r2 + 20;
+    }
+
+  }
+
+  let dx1 = currentEmotions[0] * cos(72 - 90);
+  let dy1 = currentEmotions[0] * sin(72 - 90);
+
+  let dx2 = currentEmotions[1] * cos(2 * 72 - 90);
+  let dy2 = currentEmotions[1] * sin(2 * 72 - 90);
+
+  let dx3 = currentEmotions[2] * cos(3 * 72 - 90);
+  let dy3 = currentEmotions[2] * sin(3 * 72 - 90);
+
+  let dx4 = currentEmotions[3] * cos(4 * 72 - 90);
+  let dy4 = currentEmotions[3] * sin(4 * 72 - 90);
+
+  let dx5 = currentEmotions[4] * cos(5 * 72 - 90);
+  let dy5 = currentEmotions[4] * sin(5 * 72 - 90);
+
+  noStroke();
+  fill('#FDBE02');
+  beginShape();
+  vertex(x + dx1, y + dy1);
+  vertex(x + dx2, y + dy2);
+  vertex(x + dx3, y + dy3);
+  vertex(x + dx4, y + dy4);
+  vertex(x + dx5, y + dy5);
+  vertex(x + dx1, y + dy1);
+  endShape();
+
+  text('Calm', x+100, y-30);
+  text('Sadness', x+50, y+100);
+  text('Hope', x-80, y+100);
+  text('Fear', x-130, y-30);
+  text('Happiness', x-15, y-107);
 }
 
 function reset(){
-  
-
 
   fill(255);
   const btnX = width - width * 0.15;
@@ -877,7 +1031,7 @@ function reset(){
   text('15초 후 자동으로 처음 화면으로 돌아갑니다.', btnX + btnW / 2, (btnY + btnH / 2) * 0.5);
   if (!resetScheduled) {
     resetScheduled = true;
-    setTimeout(() => {
+    timer = setTimeout(() => {
       hardResetToMain();
     }, 15000);
   }
@@ -885,10 +1039,14 @@ function reset(){
 
 
 function hardResetToMain() {
+  clearTimeout(timer);
   userInput = "";
   back_stars = [];
   loadingProgress = 0;
   loadingStartTime = 0;
+
+  hasUploadedCapture = false;
+  qrcodeElement.style.opacity = 0;
 
   isCallingLLM = false;
   emotionResult = null;
