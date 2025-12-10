@@ -175,6 +175,35 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+let loadingTextIndex = 0;
+let lastTextChange = 0;
+
+const loadingMessages = [
+  "당신의 이야기를 천천히 펼치는 중입니다",
+  "올해를 돌아보는 작은 숨을 고르는 중이에요",
+  "기억 속 별들을 하나씩 꺼내어 보고 있어요",
+  "마음이 향했던 순간들을 가만히 정리하는 중입니다",
+];
+
+function loadingUI() {
+  fill(255);
+  textAlign(CENTER, CENTER);
+
+  if (millis() - lastTextChange > 3000) {
+    loadingTextIndex = floor(random(0, loadingMessages.length));
+    lastTextChange = millis();
+  }
+
+  textSize(32);
+  text(loadingMessages[loadingTextIndex], width / 2, height * 0.3);
+
+  let dots = floor((millis() / 400) % 4);
+  let dotString = ".".repeat(dots);
+
+  textSize(28);
+  text(dotString, width / 2, height * 0.38);
+}
+
 function renderMainStars(baseImage) {
   if (!baseImage) return;
 
@@ -532,6 +561,7 @@ function input_1() {
 }
 
 function loading_1() {
+  loadingUI();
   if (!hasCalledLLM) {
     hasCalledLLM = true;
     callLLM(SYSTEM_PROMPT, userInput).then(async (result) => {
