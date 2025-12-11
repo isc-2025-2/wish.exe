@@ -29,6 +29,7 @@ let draggedStarIndex = -1;
 let targetPositions = [];
 const SNAP_THRESHOLD = 60;
 
+let intensityResult = null;
 let isRadarAnimating = false;
 let timer;
 
@@ -125,6 +126,14 @@ const colorMapping = {
   4: "노랑색",
 };
 
+const lumMapping = {
+  0: "희미하게",
+  1: "은은하게",
+  2: "또렷하게",
+  3: "깊이",
+  4: "강렬하게",
+};
+
 const LLM_API_URL = "https://p5-llm-server.vercel.app/api/llm";
 const UPLOAD_API_URL = "https://p5-llm-server.vercel.app/api/upload";
 
@@ -167,6 +176,53 @@ Return: {"emotion": 3}
 
 User: "그냥 담담한 하루였어요."
 Return: {"emotion": 0}
+`;
+
+const LUM_SYSTEM_PROMPT = `
+You are an emotion classifier for an art installation.
+Your ONLY job is to read the user's input text and classify it
+into (1) a SINGLE emotion ID, and (2) an intensity level.
+
+OUTPUT SCHEMA (strict):
+{"emotion": <number>, "intensity": <number>}
+
+EMOTION MAPPING (fixed):
+0 = Calm / Neutral
+1 = Sadness
+2 = Hope / Determination
+3 = Fear / Anxiety
+4 = Happiness / Excitement
+
+INTENSITY SCALE:
+0 = Weak / Subtle
+1 = Moderate
+2 = Strong / Intense
+3 = Very Strong / Very Intense
+4 = Extreme / Maximum
+
+RULES:
+- ALWAYS return a JSON object with BOTH keys:
+  "emotion" and "intensity".
+- <emotion> must be a single integer from 0 to 4.
+- <intensity> must be a single integer from 0 to 4.
+- DO NOT include explanations, adjectives, reasoning, or extra text.
+- DO NOT output anything except valid JSON.
+- DO NOT use markdown, backticks, or comments.
+
+If the user input is unclear, ambiguous, or overly complex,
+still select the closest emotion AND estimate intensity.
+Never ask for clarification.
+Never output natural language.
+
+Examples:
+User: "올해 너무 힘들었는데 그래도 버텼어요."
+Return: {"emotion": 2, "intensity": 1}
+
+User: "혼란스럽고 뭐가 맞는지 모르겠어요."
+Return: {"emotion": 3, "intensity": 2}
+
+User: "그냥 담담한 하루였어요."
+Return: {"emotion": 0, "intensity": 0}
 `;
 
 async function callLLM(systemPrompt, userText) {
@@ -259,7 +315,7 @@ function revealNextStar() {
   setTimeout(revealNextStar, 1000);
 }
 
-function renderMainStars() {
+function renderMainStars(flag = false) {
   for (let i = 0; i < revealedStars; i++) {
     let s = stars[i];
 
@@ -270,7 +326,11 @@ function renderMainStars() {
 
     let scale = popEase(s.popProgress);
 
-    drawImageAspect(s.image, s.x, s.y, 20 * scale, 20 * scale);
+    if (flag) {
+      drawImageAspect(s.image, s.x, s.y, 20 * scale, 20 * scale);
+    } else {
+      drawImageAspect(s.image, s.x, s.y, 20 * scale * 1.15, 20 * scale * 1.15);
+    }
   }
 }
 
@@ -312,7 +372,7 @@ function renderAnswerInput() {
 }
 
 function stars_loc() {
-  const STAR_COUNT = 7;
+  const STAR_COUNT = 11;
 
   const minY = height * 0.1;
   const maxY = height * 0.55;
@@ -363,6 +423,9 @@ let titleImage;
 let titleDescription;
 
 const coloredStarImages = Array.from({ length: 5 }, () => Array(5).fill(null));
+const lumStarImages = Array.from({ length: 5 }, () =>
+  Array.from({ length: 5 }, () => Array(5).fill(null))
+);
 
 function preload() {
   dragImage_1 = loadImage("images/dragImage_1.png");
@@ -377,6 +440,15 @@ function preload() {
   for (let i = 0; i < 5; i++) {
     for (let j = 0; j < 5; j++) {
       coloredStarImages[i][j] = loadImage(`images/stars/${i}/${j}/star.png`);
+    }
+  }
+  for (let i = 0; i < 5; i++) {
+    for (let j = 0; j < 5; j++) {
+      for (let k = 0; k < 5; k++) {
+        lumStarImages[i][j][k] = loadImage(
+          `images/stars/${i}/${j}/${k}/star.png`
+        );
+      }
     }
   }
 }
@@ -426,6 +498,9 @@ function draw() {
     case "loading_3":
       loading_3();
       break;
+    case "description_3":
+      description_3();
+      break;
     case "question_3":
       question_3();
       break;
@@ -456,6 +531,13 @@ function description_2() {
   renderMainStars(targetBase);
   renderLoadingText(
     `감정에 따라 별이 제각기 다른 색으로 빛나기 시작해요.\n2025년에는 [${emotionMapping[emotionResult]}]을(를) 가장 자주 느끼셨네요.\n당신의 감정은 [${colorMapping[emotionResult]}]으로 빛날 거예요.`
+  );
+}
+
+function description_3() {
+  renderMainStars(targetBase);
+  renderLoadingText(
+    `2025년의 스스로에게 [${emotionMapping[emotionResult]}]을 [${lumMapping[intensityResult]}] 갖고 있네요.\n당신의 감정은 [${lumMapping[intensityResult]}] 빛날 거예요.`
   );
 }
 
@@ -725,7 +807,6 @@ function loading_2() {
       try {
         emotionResult = JSON.parse(result).emotion;
         emotionResults[1] = emotionResult;
-        console.log(emotionResults);
         totalEmotions[emotionResult] += 10;
         collectedEmotions.push(emotionResult);
       } catch (e) {
@@ -783,7 +864,7 @@ function about_stars() {
 //질문 3
 
 function question_3() {
-  renderMainStars();
+  renderMainStars(targetBase);
   renderQuestionText(
     "지나간 2025년의 하루로 돌아갈 수 있다면,\n그날의 자신에게 어떤 말을 해주고 싶나요?"
   );
@@ -798,16 +879,18 @@ function input_3() {
 }
 
 function loading_3() {
-  renderMainStars();
+  renderMainStars(targetBase);
 
   if (!hasCalledLLM) {
     hasCalledLLM = true;
-    callLLM(SYSTEM_PROMPT, userInput).then(async (result) => {
+    callLLM(LUM_SYSTEM_PROMPT, userInput).then(async (result) => {
       try {
         emotionResult = JSON.parse(result).emotion;
+        intensityResult = JSON.parse(result).intensity;
+        emotionResults[2] = emotionResult;
         collectedEmotions.push(emotionResult);
         totalEmotions[emotionResult] += 10;
-        targetLum = emotionLums[emotionResult];
+        console.log(emotionResult, intensityResult);
       } catch (e) {
         console.error("JSON parse error:", result);
       }
@@ -815,20 +898,15 @@ function loading_3() {
     });
   }
 
-  textSize(24);
-  textAlign(CENTER, CENTER);
-  fill(255);
+  renderLoadingText(stars_myth());
 
-  const fact = stars_myth();
-  text(fact, width / 2, height * 0.8);
-
-  if (targetLum !== null) {
-    stars_lum(emotionResult);
+  if (emotionResults[2] !== null) {
+    startStarLum();
+    mode = "description_3";
   }
 }
 
-function stars_lum(emotionId) {
-  targetLum = emotionLums[emotionId];
+function startStarLum() {
   starLumIndex = 0;
 
   lumNextStar();
@@ -840,10 +918,13 @@ function lumNextStar() {
     return;
   }
 
-  stars[starLumIndex].lum = targetLum;
+  let img =
+    lumStarImages[emotionResults[0]][emotionResults[1]][intensityResult];
+  stars[starLumIndex].image = img;
+  triggerPop(stars[starLumIndex]);
   starLumIndex++;
 
-  setTimeout(lumNextStar, 500);
+  setTimeout(lumNextStar, 1000);
 }
 
 function stars_myth() {
@@ -860,7 +941,7 @@ function stars_myth() {
 //질문 4(소원)
 
 function question_4() {
-  renderMainStars();
+  renderMainStars(true);
   renderQuestionText(
     "2025년의 나날을 기억하며, 다가오는 2026년에 이루고 싶은 소망은 무엇인가요?"
   );
