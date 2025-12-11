@@ -339,9 +339,9 @@ function renderMainStars(flag = false) {
     let scale = popEase(s.popProgress);
 
     if (flag) {
-      drawImageAspect(s.image, s.x, s.y, 30 * scale, 30 * scale);
-    } else {
       drawImageAspect(s.image, s.x, s.y, 30 * scale * 1.3, 30 * scale * 1.3);
+    } else {
+      drawImageAspect(s.image, s.x, s.y, 30 * scale, 30 * scale);
     }
   }
 }
@@ -554,7 +554,7 @@ function description_2() {
 }
 
 function description_3() {
-  renderMainStars();
+  renderMainStars(true);
   renderLoadingText(
     `2025년의 스스로에게 [${emotionMapping[emotionResult]}]을 [${lumMapping[intensityResult]}] 갖고 있네요.\n당신의 감정은 [${lumMapping[intensityResult]}] 빛날 거예요.`
   );
@@ -1230,7 +1230,7 @@ function getDragImageXBounds() {
 
 function drag_stars() {
   draw_dragImage();
-  renderMainStars();
+  renderMainStars(true);
   renderStarsTargets();
   renderDragInstruction();
 
@@ -1275,7 +1275,7 @@ function last() {
   //최종화면
   backgroundStar();
   draw_dragImage();
-  renderMainStars();
+  renderMainStars(true);
 
   textSize(24);
   textAlign(CENTER, CENTER);
