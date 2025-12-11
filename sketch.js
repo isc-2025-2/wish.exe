@@ -31,6 +31,9 @@ let timer;
 
 let font;
 
+let dialogImage = null;
+let inputImage = null;
+
 // //참가자들 별자리 저장
 // const MAX_USER_STARS = 5;
 // let userStars = [];
@@ -164,13 +167,6 @@ async function callLLM(systemPrompt, userText) {
   return reply;
 }
 
-let factTexts = [
-  `디즈니 영화 오프닝에서 배경 음악으로 사용되는 음악의 제목이 
-  피노키오의 주제곡인 ‘When you wish upon a star’라는 사실을 알고 있었나요? 
-  나무 인형 피노키오를 만든 제페토 할아버지가 밤하늘의 밝은 별을 보며 피노키오가 진짜 사람이 되기를 소원하자, 
-  그 소원을 들은 요정들이 피노키오에게 생명을 불어넣어 주었죠.`,
-];
-
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -218,7 +214,7 @@ function renderQuestionText(txt) {
   textAlign(CENTER, CENTER);
   textSize(28);
 
-  text(txt, width / 2, height * 0.7);
+  text(txt, width / 2, height * 0.67);
 }
 
 function getUserInput() {
@@ -230,19 +226,23 @@ function getUserInput() {
 }
 
 function renderAnswerInput() {
+  image(inputImage, width / 2, height * 0.82, 700, 180);
   if (!inputBox) {
     inputBox = createInput("");
-    inputBox.attribute("placeholder", "여기에 답을 입력하세요...");
 
-    inputBox.position(width / 2 - 250, height * 0.8);
-    inputBox.size(500, 60);
+    let x = (width - 600) / 2;
+    let y = height * 0.8;
 
-    inputBox.style("font-size", "22px");
-    inputBox.style("padding", "12px 16px");
-    inputBox.style("border", "2px solid rgba(255,255,255,0.3)");
-    inputBox.style("border-radius", "12px");
-    inputBox.style("background", "rgba(255,255,255,0.8)");
+    inputBox.position(x, y);
+    inputBox.size(600, 60);
+
+    inputBox.style("font-size", "24px");
+    inputBox.style("color", "white");
+    inputBox.style("text-align", "center");
+    inputBox.style("background", "none");
     inputBox.style("outline", "none");
+    inputBox.style("border", "none");
+    inputBox.style("font-family", "pokemon");
   }
 }
 
@@ -297,6 +297,8 @@ let titleDescription;
 
 function preload() {
   dragImage_1 = loadImage("images/dragImage_1.png");
+  dialogImage = loadImage("images/dialog.png");
+  inputImage = loadImage("images/input.png");
   titleImage = loadImage("images/title.png");
   titleDescription = loadImage("images/title_description.png");
   font = loadFont("fonts/pokemon.ttf");
@@ -579,6 +581,18 @@ function loading_1() {
   if (targetBase !== null) {
     mode = "question_2";
   }
+
+  textAlign(CENTER, CENTER);
+  fill(255);
+  textSize(24);
+  text(
+    `디즈니 영화 오프닝에서 배경 음악으로 사용되는 음악의 제목이 
+  피노키오의 주제곡인 ‘When you wish upon a star’라는 사실을 알고 있었나요? 
+  나무 인형 피노키오를 만든 제페토 할아버지가 밤하늘의 밝은 별을 보며 피노키오가 진짜 사람이 되기를 소원하자, 
+  그 소원을 들은 요정들이 피노키오에게 생명을 불어넣어 주었죠.`,
+    width / 2,
+    height * 0.8
+  );
 }
 
 //질문 2
