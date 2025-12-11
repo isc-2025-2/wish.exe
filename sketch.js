@@ -46,10 +46,15 @@ let inputImage = null;
 let qrcode;
 let qrcodeElement;
 let resetScheduled = false;
+let qrcodeLoadingElement;
+let qrcodeSkeletonElement;
 
 function uploadCapture(base64) {
   if (!base64 || hasUploadedCapture) return;
   hasUploadedCapture = true;
+
+  if (qrcodeLoadingElement) qrcodeLoadingElement.style.opacity = 1;
+  if (qrcodeSkeletonElement) qrcodeSkeletonElement.style.opacity = 1;
 
   fetch(UPLOAD_API_URL, {
     method: "POST",
@@ -63,6 +68,8 @@ function uploadCapture(base64) {
       console.log("업로드된 이미지 URL:", data.url);
       qrcode.makeCode(data.url);
       qrcodeElement.style.opacity = 1;
+      if (qrcodeLoadingElement) qrcodeLoadingElement.style.opacity = 0;
+      if (qrcodeSkeletonElement) qrcodeSkeletonElement.style.opacity = 0;
     });
 }
 
@@ -327,9 +334,9 @@ function renderMainStars(flag = false) {
     let scale = popEase(s.popProgress);
 
     if (flag) {
-      drawImageAspect(s.image, s.x, s.y, 20 * scale, 20 * scale);
+      drawImageAspect(s.image, s.x, s.y, 30 * scale, 30 * scale);
     } else {
-      drawImageAspect(s.image, s.x, s.y, 20 * scale * 1.15, 20 * scale * 1.15);
+      drawImageAspect(s.image, s.x, s.y, 30 * scale * 1.15, 30 * scale * 1.15);
     }
   }
 }
@@ -462,6 +469,8 @@ function setup() {
     height: 128,
   });
   qrcodeElement = document.getElementById("qrcode");
+  qrcodeLoadingElement = document.getElementById("qrcode-loading");
+  qrcodeSkeletonElement = document.getElementById("qrcode-skeleton");
   angleMode(DEGREES);
   textFont(font);
   stars = stars_loc();
@@ -521,21 +530,21 @@ function description_1() {
     `감정에 따라 탄생하는 별의 모양이 달라져요.\n2025년 가장 많은 노력을 들인 일은[${emotionMapping[emotionResult]}]과 연결되어 있네요.
     당신의 [${emotionMapping[emotionResult]}]을 [${shapeMapping[emotionResult]}] 별에 담아볼게요.`
   );
-  renderMainStars(targetBase);
+  renderMainStars();
   if (revealedStars >= stars.length) {
     mode = "question_2";
   }
 }
 
 function description_2() {
-  renderMainStars(targetBase);
+  renderMainStars();
   renderLoadingText(
     `감정에 따라 별이 제각기 다른 색으로 빛나기 시작해요.\n2025년에는 [${emotionMapping[emotionResult]}]을(를) 가장 자주 느끼셨네요.\n당신의 감정은 [${colorMapping[emotionResult]}]으로 빛날 거예요.`
   );
 }
 
 function description_3() {
-  renderMainStars(targetBase);
+  renderMainStars();
   renderLoadingText(
     `2025년의 스스로에게 [${emotionMapping[emotionResult]}]을 [${lumMapping[intensityResult]}] 갖고 있네요.\n당신의 감정은 [${lumMapping[intensityResult]}] 빛날 거예요.`
   );
@@ -784,7 +793,7 @@ function loading_1() {
 //질문 2
 
 function question_2() {
-  renderMainStars(targetBase);
+  renderMainStars();
   renderQuestionText(
     "2025년에 가장 많이 했던 생각은 무엇인가요?\n2025년에 가장 자주 했던 말은 무엇인가요?"
   );
@@ -799,7 +808,7 @@ function input_2() {
 }
 
 function loading_2() {
-  renderMainStars(targetBase);
+  renderMainStars();
 
   if (!hasCalledLLM) {
     hasCalledLLM = true;
@@ -864,7 +873,7 @@ function about_stars() {
 //질문 3
 
 function question_3() {
-  renderMainStars(targetBase);
+  renderMainStars();
   renderQuestionText(
     "지나간 2025년의 하루로 돌아갈 수 있다면,\n그날의 자신에게 어떤 말을 해주고 싶나요?"
   );
@@ -879,7 +888,7 @@ function input_3() {
 }
 
 function loading_3() {
-  renderMainStars(targetBase);
+  renderMainStars();
 
   if (!hasCalledLLM) {
     hasCalledLLM = true;
@@ -1351,6 +1360,8 @@ function hardResetToMain() {
 
   hasUploadedCapture = false;
   qrcodeElement.style.opacity = 0;
+  if (qrcodeLoadingElement) qrcodeLoadingElement.style.opacity = 0;
+  if (qrcodeSkeletonElement) qrcodeSkeletonElement.style.opacity = 0;
 
   isCallingLLM = false;
   hasCalledLLM = false;
