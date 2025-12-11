@@ -1336,7 +1336,7 @@ function reset() {
     resetScheduled = true;
     timer = setTimeout(() => {
       hardResetToMain();
-    }, 15000);
+    }, 60000);
   }
 }
 
