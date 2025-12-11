@@ -1,5 +1,6 @@
 let userInput = "";
 let back_stars = [];
+
 let loadingProgress = 0;
 let loadingStartTime = 0;
 let loadingDuration = 5000;
@@ -18,16 +19,18 @@ let targetBase = null;
 let starColorIndex = 0;
 let targetColor = null;
 
-let starLumIndex = 0;
+let starLumIndex = 0; //stars_lum
 let targetLum = null;
 
 let factLoading = null;
+let mythLoading = null;
 let transitioning = false;
 
-let stars = [];
+let stars = []; //starsLoc
+
 let draggedStarIndex = -1;
 let targetPositions = [];
-const SNAP_THRESHOLD = 60;
+const SNAP_THRESHOLD = 20;
 
 let intensityResult = null;
 let isRadarAnimating = false;
@@ -38,10 +41,11 @@ let font;
 let dialogImage = null;
 let inputImage = null;
 
-// //참가자들 별자리 저장
-// const MAX_USER_STARS = 5;
-// let userStars = [];
-// let lastStarSaved = false;
+//참가자들 별자리 저장
+let captureLayer;
+const MAX_USER_STARS = 5; //saveCurrentStar, renderSavedStars
+let userStars = [];
+let lastStarSaved = false;
 
 let qrcode;
 let qrcodeElement;
@@ -82,6 +86,7 @@ const emotionColors = {
 };
 
 const emotionLums = {
+  //이후 이미지로 대체
   0: 13,
   1: 16,
   2: 19,
@@ -257,69 +262,15 @@ async function callLLM(systemPrompt, userText) {
   return reply;
 }
 
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-let loadingTextIndex = 0;
-let lastTextChange = 0;
-
-const loadingMessages = [
-  "당신의 이야기를 천천히 펼치는 중입니다",
-  "올해를 돌아보는 작은 숨을 고르는 중이에요",
-  "기억 속 별들을 하나씩 꺼내어 보고 있어요",
-  "마음이 향했던 순간들을 가만히 정리하는 중입니다",
+let factTexts = [
+  `디즈니 영화 오프닝에서 배경 음악으로 사용되는 음악의 제목이 
+  피노키오의 주제곡인 ‘When you wish upon a star’라는 사실을 알고 있었나요? 
+  나무 인형 피노키오를 만든 제페토 할아버지가 밤하늘의 밝은 별을 보며 피노키오가 진짜 사람이 되기를 소원하자, 
+  그 소원을 들은 요정들이 피노키오에게 생명을 불어넣어 주었죠.`,
 ];
 
-function loadingUI() {
-  fill(255);
-  textAlign(CENTER, CENTER);
-
-  if (millis() - lastTextChange > 3000) {
-    loadingTextIndex = floor(random(0, loadingMessages.length));
-    lastTextChange = millis();
-  }
-
-  textSize(32);
-  text(loadingMessages[loadingTextIndex], width / 2, height * 0.3);
-
-  let dots = floor((millis() / 400) % 4);
-  let dotString = ".".repeat(dots);
-
-  textSize(28);
-  text(dotString, width / 2, height * 0.38);
-}
-
-let revealedStars = 0;
-let isRevealing = false;
-
-let popQueue = [];
-
-let hasStartedStarColoring = false;
-
-function triggerPop(star) {
-  star.popProgress = 0;
-  popQueue.push(star);
-}
-
-function startStarReveal() {
-  revealedStars = 0;
-  isRevealing = true;
-
-  revealNextStar();
-}
-
-function popEase(p) {
-  return p < 0.3 ? map(p, 0, 0.3, 0, 1.4) : map(p, 0.3, 1, 1.4, 1);
-}
-
-function revealNextStar() {
-  if (revealedStars >= stars.length) return;
-
-  triggerPop(stars[revealedStars]);
-  revealedStars++;
-
-  setTimeout(revealNextStar, 500);
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function renderMainStars(flag = false) {
@@ -379,46 +330,26 @@ function renderAnswerInput() {
 }
 
 function stars_loc() {
-  const STAR_COUNT = 11;
+  const base = [
+    { x: width * 0.18, y: height * 0.72 },
+    { x: width * 0.27, y: height * 0.48 },
+    { x: width * 0.33, y: height * 0.31 },
+    { x: width * 0.41, y: height * 0.57 },
+    { x: width * 0.46, y: height * 0.4 },
+    { x: width * 0.53, y: height * 0.66 },
+    { x: width * 0.6, y: height * 0.29 },
+    { x: width * 0.68, y: height * 0.51 },
+    { x: width * 0.74, y: height * 0.37 },
+    { x: width * 0.81, y: height * 0.6 },
+    { x: width * 0.56, y: height * 0.19 },
+  ];
+  //각 별자리별로 필요한 별의 개수가 다르므로, 별자리 index와 별의 index를 통일해 각 별자리별로 별의 좌표를 입력해야 할 것 같습니다.
 
-  const minY = height * 0.1;
-  const maxY = height * 0.55;
-
-  const stars = [];
-  const MIN_DIST = 35;
-
-  for (let i = 0; i < STAR_COUNT; i++) {
-    let x, y;
-    let safe = false;
-    let attempts = 0;
-
-    while (!safe && attempts < 200) {
-      attempts++;
-
-      x = random(width * 0.15, width * 0.85);
-      y = random(minY, maxY);
-
-      safe = true;
-      for (let s of stars) {
-        let d = dist(x, y, s.x, s.y);
-        if (d < MIN_DIST) {
-          safe = false;
-          break;
-        }
-      }
-    }
-
-    stars.push({
-      x,
-      y,
-      color: { r: 255, g: 255, b: 255 },
-      lum: 0,
-      popProgress: 1,
-      image: null,
-    });
-  }
-
-  return stars;
+  return base.map((s) => ({
+    ...s,
+    color: { r: 255, g: 255, b: 255 },
+    lum: 0,
+  }));
 }
 
 let mode = "main"; // "main" 또는 "intro"
@@ -426,6 +357,7 @@ let introFrame = 0;
 let textCount = 0;
 
 let dragImage_1;
+//let drageImage_n;
 let titleImage;
 let titleDescription;
 
@@ -436,33 +368,18 @@ const lumStarImages = Array.from({ length: 5 }, () =>
 
 function preload() {
   dragImage_1 = loadImage("images/dragImage_1.png");
-  dialogImage = loadImage("images/dialog.png");
-  inputImage = loadImage("images/input.png");
   titleImage = loadImage("images/title.png");
   titleDescription = loadImage("images/title_description.png");
   font = loadFont("fonts/pokemon.ttf");
-  for (let i = 0; i < 5; i++) {
-    baseStarImages[i] = loadImage(`images/stars/${i}/star.png`);
-  }
-  for (let i = 0; i < 5; i++) {
-    for (let j = 0; j < 5; j++) {
-      coloredStarImages[i][j] = loadImage(`images/stars/${i}/${j}/star.png`);
-    }
-  }
-  for (let i = 0; i < 5; i++) {
-    for (let j = 0; j < 5; j++) {
-      for (let k = 0; k < 5; k++) {
-        lumStarImages[i][j][k] = loadImage(
-          `images/stars/${i}/${j}/${k}/star.png`
-        );
-      }
-    }
-  }
 }
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
   imageMode(CENTER);
+
+  captureLayer = createGraphics(windowWidth, windowHeight);
+  captureLayer.imageMode(CENTER);
+
   qrcode = new QRCode(document.getElementById("qrcode"), {
     text: "",
     width: 128,
@@ -646,6 +563,11 @@ function backgroundStar() {
   spawnShootingStar();
   updateShootingStars();
   drawShootingStars();
+
+  // if (mode === "main"){
+  //   console.log("renderSavedStars: length =", userStars.length);
+  //   renderSavedStars();
+  // }
 }
 
 // 메인
@@ -664,6 +586,9 @@ function drawImageAspect(img, x, y, maxW, maxH) {
 function main_frame() {
   stroke(255);
   fill(255);
+
+  renderSavedStars();
+
   drawImageAspect(titleImage, width * 0.5, height * 0.45, width, height);
   drawImageAspect(titleDescription, width * 0.5, height * 0.8, 400, height);
 }
@@ -697,7 +622,7 @@ function intro_text() {
   textAlign(CENTER, CENTER);
 
   textSize(24);
-  text("-> Next (Press Enter)", width * 0.8, height * 0.9);
+  text("--> Next (Press Enter)", width * 0.8, height * 0.9);
 
   // 본문 텍스트
   textSize(32);
@@ -760,34 +685,41 @@ function input_1() {
 }
 
 function loading_1() {
-  loadingUI();
-  if (!hasCalledLLM) {
-    hasCalledLLM = true;
-    callLLM(SYSTEM_PROMPT, userInput).then(async (result) => {
-      try {
-        emotionResult = JSON.parse(result).emotion;
-        emotionResults[0] = emotionResult;
-        collectedEmotions.push(emotionResult);
-        totalEmotions[emotionResult] += 10;
-        stars.forEach((s) => {
-          s.image = baseStarImages[emotionResult];
-        });
-      } catch (e) {
-        console.error("JSON parse error:", result);
-      }
-      isCallingLLM = false;
-    });
-  }
-  if (emotionResults[0] !== null) {
-    mode = "description_1";
-    hasCalledLLM = false;
-    startStarReveal();
+  let elapsed = millis() - loadingStartTime;
+
+  fill(255);
+  textSize(24);
+  textAlign(CENTER, CENTER);
+  text("생각을 정리하는 중...", width / 2, height / 2 - 200);
+
+  fill(255, 210);
+  rect(40, height - 180, width - 80, 140, 20);
+
+  fill(40);
+  textAlign(LEFT, TOP);
+  textSize(18);
+  text(factTexts[0], 60, height - 160, width - 120);
+
+  if (elapsed < loadingDuration) {
+    let dots = floor((elapsed / 300) % 4);
+    text("⋆".repeat(dots), width / 2, height / 2 - 160);
+    return;
   }
 
-  renderLoadingText(`디즈니 영화 오프닝에서 배경 음악으로 사용되는 음악의 제목이 
-    피노키오의 주제곡인 ‘When you wish upon a star’라는 사실을 알고 있었나요? 
-    나무 인형 피노키오를 만든 제페토 할아버지가 밤하늘의 밝은 별을 보며 피노키오가 진짜 사람이 되기를 소원하자, 
-    그 소원을 들은 요정들이 피노키오에게 생명을 불어넣어 주었죠.`);
+  if (stars.length === 0) {
+    stars = stars_loc();
+  }
+
+  loadingProgress += 0.01;
+  if (loadingProgress > 1) loadingProgress = 1;
+
+  for (let i = 0; i < stars.length * loadingProgress; i++) {
+    let s = stars[i];
+    fill(255);
+    ellipse(s.x, s.y, 10, 10);
+  }
+
+  if (loadingProgress >= 1) mode = "question_2";
 }
 
 //질문 2
@@ -859,15 +791,14 @@ function about_stars() {
   abouts = [
     "별자리 , 천문학 에서 특정 그룹 중 하나적어도 이름을 붙인 사람들이 상상했던 별들은\n 하늘에서 눈에 띄는 물체나 생물의 형태를 이룬다고 믿었습니다.",
     "별자리는 고대 바빌로니아인들이 유목 생활을 하며 밤하늘의 별에 모양을 붙이기 시작한 데서 유래했습니다.",
-    "자신의 생일날에 자신의 탄생 별자리를 볼 수가 없습니다.\n생일에서 6개월 정도 전후에만 밤하늘에서 찾아볼 수 있습니다.",
+    "자신의 생일날에 자신의 탄생 별자리를 볼 수가 없다는 것을 아셨나요?.\n 자신의 탄생 별자리는 생일에서 6개월 정도 전후에만 밤하늘에서 찾아볼 수 있습니다.",
     "국제천문연맹은 1928년, 황도 12궁을 포함한 88개의 별자리를 공식적으로 확정지었습니다.",
     "가장 큰 별자리는 밤하늘의 면적 중 3.16%를 차지하는 바다뱀 자리입니다.",
     "가장 작은 별자리는 남쪽 하늘의 가장 인기 있는 별자리 중 하나인 남십자자리입니다.",
     "밤하늘에서 가장 밝은 별은 큰개자리에 있는 시리우스입니다.",
   ];
-  const fact = random(abouts);
+  const fact = "- 별자리와 관련한 사실 -\n" + random(abouts);
   return fact;
-  //fact 전달
 }
 
 //질문 3
@@ -885,6 +816,7 @@ function input_3() {
   emotionResult = null;
   hasCalledLLM = false;
   mode = "loading_3";
+  mythLoading = stars_myth();
 }
 
 function loading_3() {
@@ -1011,9 +943,19 @@ function mousePressed() {
   if (mode === "drag_stars") {
     for (let i = 0; i < stars.length; i++) {
       let s = stars[i];
+
       let d = dist(mouseX, mouseY, s.x, s.y);
-      if (d < 25) {
+      if (d < 20) {
         draggedStarIndex = i;
+
+        if (s.locked) {
+          s.locked = false;
+          if (typeof s.lockedTargetIndex === "number") {
+            const t = targetPositions[s.lockedTargetIndex];
+            if (t) t.occupied = false;
+          }
+          s.lockedTargetIndex = null;
+        }
         break;
       }
     }
@@ -1034,10 +976,77 @@ function mousePressed() {
   }
 }
 
+function snapIfStarClose() {
+  if (draggedStarIndex === -1) return;
+  if (!targetPositions || targetPositions.length === 0) return;
+
+  const s = stars[draggedStarIndex];
+
+  for (let i = 0; i < targetPositions.length; i++){
+    const t = targetPositions[i];
+
+    if (t.occupied && s.lockedTargetIndex !== i) continue;
+
+    const d = dist(s.x, s.y, t.x, t.y);
+    if (d <= SNAP_THRESHOLD) {
+      if (typeof s.lockedTargetIndex === "number" && s.lockedTargetIndex !== i){
+        const old = targetPositions[s.lockedTargetIndex];
+        if (old) old.occupied = false;
+      }
+
+      s.x = t.x;
+      s.y = t.y;
+      s.locked = true;
+      s.lockedTargetIndex = i;
+      t.occupied = true;
+      
+      draggedStarIndex = -1;
+      break;
+    }
+  }
+}
+
+function snapIfStarClose() {
+  if (draggedStarIndex === -1) return;
+  if (!targetPositions || targetPositions.length === 0) return;
+
+  const s = stars[draggedStarIndex];
+
+  for (let i = 0; i < targetPositions.length; i++) {
+    const t = targetPositions[i];
+
+    if (t.occupied && s.lockedTargetIndex !== i) continue;
+
+    const d = dist(s.x, s.y, t.x, t.y);
+    if (d <= SNAP_THRESHOLD) {
+      if (
+        typeof s.lockedTargetIndex === "number" &&
+        s.lockedTargetIndex !== i
+      ) {
+        const old = targetPositions[s.lockedTargetIndex];
+        if (old) old.occupied = false;
+      }
+
+      s.x = t.x;
+      s.y = t.y;
+      s.locked = true;
+      s.lockedTargetIndex = i;
+      t.occupied = true;
+
+      draggedStarIndex = -1;
+      break;
+    }
+  }
+}
+
 function mouseDragged() {
   if (mode === "drag_stars" && draggedStarIndex !== -1) {
-    stars[draggedStarIndex].x = mouseX;
-    stars[draggedStarIndex].y = mouseY;
+    const s = stars[draggedStarIndex];
+    if (!s.locked) {
+      s.x = mouseX;
+      s.y = mouseY;
+      snapIfStarClose();
+    }
   }
 }
 
@@ -1057,7 +1066,6 @@ function checkStarsComplete() {
     for (let i = 0; i < stars.length; i++) {
       if (usedStars.has(i)) continue;
 
-      const s = stars[i];
       const d = dist(s.x, s.y, t.x, t.y);
       if (d < SNAP_THRESHOLD) {
         s.x = t.x;
@@ -1077,9 +1085,8 @@ function checkStarsComplete() {
     }
   }
 
-  return matched === targetPositions.length;
+  return true;
 }
-
 function draw_dragImage() {
   if (dragImage_1 && dragImage_1.width > 0) {
     const originalW = dragImage_1.width;
@@ -1122,9 +1129,12 @@ function drag_stars() {
   }
 }
 
+let lastEnteredAt = 0; //last 모드 진입 시각
+
 async function goToLastMode() {
   await delay(3000); // 3초 기다림
   mode = "last";
+  lastEnteredAt = millis();
 }
 
 function renderDragInstruction() {
@@ -1156,15 +1166,6 @@ function last() {
   draw_dragImage();
   renderMainStars();
 
-  // renderStarsLines(stars);
-
-  // if (!lastStarSaved){
-  //   saveCurrentStar();
-  //   lastStarSaved = true;
-  // }
-
-  // userInput을 text로 표시
-
   textSize(24);
   textAlign(CENTER, CENTER);
   fill(255);
@@ -1178,6 +1179,11 @@ function last() {
   );
   let base64 = cropped.canvas.toDataURL("image/png");
   uploadCapture(base64);
+
+  if (!lastStarSaved) {
+    saveCurrentStar();
+    lastStarSaved = true;
+  }
 
   if (!isRadarAnimating) isRadarAnimating = true;
 
@@ -1239,6 +1245,64 @@ function updateRadarValues() {
 
 // function renderSavedStars() {
 //   if (!userStars || userStars.length === 0) return;
+
+function drawForCapture(layer) {
+  layer.clear();
+
+  if (dragImage_1 && dragImage_1.width > 0) {
+    const originalW = dragImage_1.width;
+    const originalH = dragImage_1.height;
+
+    const scaledW = width * 0.7;
+    const scaledH = originalH * (scaledW / originalW);
+
+    const cx = width / 2;
+    const cy = height / 2;
+
+    layer.image(dragImage_1, cx, cy, scaledW, scaledH);
+  }
+
+  for (let s of stars) {
+      const { r, g, b } = s.color;
+      const l = s.lum || 0;
+      layer.noStroke();
+      layer.fill(r, g, b);
+      layer.ellipse(s.x, s.y, 10, 10);
+
+      if (l > 0) {
+        layer.fill(r, g, b, 70);
+        layer.ellipse(s.x, s.y, l, l);
+      }
+  }
+}
+
+function captureStarImage() {
+  drawForCapture(captureLayer);
+
+  const bounds = getDragImageXBounds();
+  const cropimage = captureLayer.get(
+    bounds.startX,
+    0,
+    bounds.width,
+    windowHeight
+  );
+  
+
+  return cropimage;
+}
+
+function saveCurrentStar() {
+  const userImg = captureStarImage();
+  userStars.push(userImg);
+  
+  if (userStars.length > MAX_USER_STARS) {
+    userStars.shift();  // 가장 오래된 것 제거
+  }
+}
+
+
+function renderSavedStars(){
+  if (!userStars || userStars.length === 0) return;
 
 //   for (let user of userStars){
 //     if (!user || user.length < 2) continue;
@@ -1336,9 +1400,8 @@ function reset() {
   textAlign(CENTER, CENTER);
   textSize(18);
   text("처음으로", btnX + btnW / 2, btnY + btnH / 2);
-  fill(255);
   text(
-    "1분 후 자동으로 처음 화면으로 돌아갑니다.",
+    "15초 후 자동으로 처음 화면으로 돌아갑니다.",
     btnX + btnW / 2,
     (btnY + btnH / 2) * 0.5
   );
@@ -1389,9 +1452,9 @@ function hardResetToMain() {
 
   transitioning = false;
   resetScheduled = false;
-  hasStartedStarColoring = false;
+  lastStarSaved = false;
 
-  targetBase = null;
+  lastEnteredAt = 0;
 
   mode = "main";
 }
