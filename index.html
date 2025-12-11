@@ -2,11 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <title>Sketch</title>
 
-    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" type="text/css" href="style.css" />
 
     <script src="libraries/p5.min.js"></script>
     <script src="libraries/p5.sound.min.js"></script>
@@ -16,6 +16,10 @@
   <body>
     <!-- <script src="getXY.js"></script> -->
     <script src="sketch.js"></script>
-    <div id="qrcode"></div>
+    <div id="qrcode-wrapper">
+      <div id="qrcode-loading">별자리 이미지를 만드는 중...</div>
+      <div id="qrcode-skeleton"></div>
+      <div id="qrcode"></div>
+    </div>
   </body>
 </html>
