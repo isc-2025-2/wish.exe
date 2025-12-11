@@ -52,10 +52,14 @@ let qrcodeElement;
 let resetScheduled = false;
 let qrcodeLoadingElement;
 let qrcodeSkeletonElement;
+let uploadRequestId = 0;
 
 function uploadCapture(base64) {
   if (!base64 || hasUploadedCapture) return;
   hasUploadedCapture = true;
+
+  uploadRequestId += 1;
+  const thisRequestId = uploadRequestId;
 
   if (qrcodeLoadingElement) qrcodeLoadingElement.style.opacity = 1;
   if (qrcodeSkeletonElement) qrcodeSkeletonElement.style.opacity = 1;
@@ -69,7 +73,8 @@ function uploadCapture(base64) {
   })
     .then((res) => res.json())
     .then((data) => {
-      console.log("업로드된 이미지 URL:", data.url);
+      if (thisRequestId !== uploadRequestId) return;
+
       qrcode.makeCode(data.url);
       qrcodeElement.style.opacity = 1;
       if (qrcodeLoadingElement) qrcodeLoadingElement.style.opacity = 0;
@@ -86,7 +91,6 @@ const emotionColors = {
 };
 
 const emotionLums = {
-  //이후 이미지로 대체
   0: 13,
   1: 16,
   2: 19,
@@ -1528,6 +1532,7 @@ function reset() {
 
 function hardResetToMain() {
   clearTimeout(timer);
+  uploadRequestId += 1;
   userInput = "";
   back_stars = [];
 
