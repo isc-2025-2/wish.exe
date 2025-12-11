@@ -52,10 +52,14 @@ let qrcodeElement;
 let resetScheduled = false;
 let qrcodeLoadingElement;
 let qrcodeSkeletonElement;
+let uploadRequestId = 0;
 
 function uploadCapture(base64) {
   if (!base64 || hasUploadedCapture) return;
   hasUploadedCapture = true;
+
+  uploadRequestId += 1;
+  const thisRequestId = uploadRequestId;
 
   if (qrcodeLoadingElement) qrcodeLoadingElement.style.opacity = 1;
   if (qrcodeSkeletonElement) qrcodeSkeletonElement.style.opacity = 1;
@@ -69,7 +73,8 @@ function uploadCapture(base64) {
   })
     .then((res) => res.json())
     .then((data) => {
-      console.log("업로드된 이미지 URL:", data.url);
+      if (thisRequestId !== uploadRequestId) return;
+
       qrcode.makeCode(data.url);
       qrcodeElement.style.opacity = 1;
       if (qrcodeLoadingElement) qrcodeLoadingElement.style.opacity = 0;
@@ -86,7 +91,6 @@ const emotionColors = {
 };
 
 const emotionLums = {
-  //이후 이미지로 대체
   0: 13,
   1: 16,
   2: 19,
@@ -327,7 +331,7 @@ function revealNextStar() {
   setTimeout(revealNextStar, 500);
 }
 
-function renderMainStars(flag = false) {
+function renderMainStars() {
   for (let i = 0; i < revealedStars; i++) {
     let s = stars[i];
 
@@ -337,12 +341,15 @@ function renderMainStars(flag = false) {
     }
 
     let scale = popEase(s.popProgress);
+    let sizeScale = s.sizeScale ?? 1;
 
-    if (flag) {
-      drawImageAspect(s.image, s.x, s.y, 30 * scale * 1.3, 30 * scale * 1.3);
-    } else {
-      drawImageAspect(s.image, s.x, s.y, 30 * scale, 30 * scale);
-    }
+    drawImageAspect(
+      s.image,
+      s.x,
+      s.y,
+      30 * scale * sizeScale,
+      30 * scale * sizeScale
+    );
   }
 }
 
@@ -419,6 +426,7 @@ function stars_loc() {
       color: { r: 255, g: 255, b: 255 },
       lum: 0,
       popProgress: 1,
+      sizeScale: 1,
       image: null,
     });
   }
@@ -554,7 +562,7 @@ function description_2() {
 }
 
 function description_3() {
-  renderMainStars(true);
+  renderMainStars();
   renderLoadingText(
     `2025년의 스스로에게 [${emotionMapping[emotionResult]}]을 [${lumMapping[intensityResult]}] 갖고 있네요.\n당신의 감정은 [${lumMapping[intensityResult]}] 빛날 거예요.`
   );
@@ -687,11 +695,44 @@ function main_frame() {
 }
 
 function renderLoadingText(textString) {
-  image(dialogImage, width / 2, height * 0.82, 1000, 350);
-  textAlign(CENTER, CENTER);
+  if (!dialogImage) return;
+
+  const textStr = String(textString ?? "");
+  const lines = textStr.split("\n");
+
+  const paddingX = 64;
+  const paddingY = 16;
+
+  const fontSize = 24;
+  textSize(fontSize);
+  textAlign(LEFT, TOP);
+
+  let maxLineWidth = 0;
+  for (let line of lines) {
+    const w = textWidth(line);
+    if (w > maxLineWidth) maxLineWidth = w;
+  }
+
+  const bubbleWidth = maxLineWidth + paddingX * 2;
+
+  const lineHeight = fontSize + 8;
+  const textHeight = lines.length * lineHeight;
+
+  const bubbleHeight = textHeight + paddingY * 2;
+
+  const cx = width / 2;
+  const cy = height * 0.8;
+
+  image(dialogImage, cx, cy, bubbleWidth, bubbleHeight + 350);
+
   fill(0);
-  textSize(24);
-  text(textString, width / 2, height * 0.8);
+  textAlign(CENTER);
+
+  const startY = cy - bubbleHeight / 2;
+
+  for (let i = 0; i < lines.length; i++) {
+    text(lines[i], cx, startY + i * lineHeight);
+  }
 }
 
 // 인트로
@@ -947,6 +988,7 @@ function lumNextStar() {
   let img =
     lumStarImages[emotionResults[0]][emotionResults[1]][intensityResult];
   stars[starLumIndex].image = img;
+  stars[starLumIndex].sizeScale = 1.25;
   triggerPop(stars[starLumIndex]);
   starLumIndex++;
 
@@ -989,7 +1031,7 @@ function stars_myth() {
 //질문 4(소원)
 
 function question_4() {
-  renderMainStars(true);
+  renderMainStars();
   renderQuestionText(
     "2025년의 나날을 기억하며, 다가오는 2026년에 이루고 싶은 소망은 무엇인가요?"
   );
@@ -1201,7 +1243,7 @@ function getDragImageXBounds() {
 
 function drag_stars() {
   draw_dragImage();
-  renderMainStars(true);
+  renderMainStars();
   renderStarsTargets();
   renderDragInstruction();
 
@@ -1246,7 +1288,7 @@ function last() {
   //최종화면
   backgroundStar();
   draw_dragImage();
-  renderMainStars(true);
+  renderMainStars();
 
   textSize(24);
   textAlign(CENTER, CENTER);
@@ -1317,8 +1359,9 @@ function drawForCapture(layer) {
     const ih = s.image.height;
     if (iw <= 0 || ih <= 0) continue;
 
-    const maxW = 30 * 1.3;
-    const maxH = 30 * 1.3;
+    const sizeScale = s.sizeScale ?? 1;
+    const maxW = 30 * sizeScale;
+    const maxH = 30 * sizeScale;
     const ratio = Math.min(maxW / iw, maxH / ih);
     const w = iw * ratio;
     const h = ih * ratio;
@@ -1466,6 +1509,7 @@ function reset() {
 
 function hardResetToMain() {
   clearTimeout(timer);
+  uploadRequestId += 1;
   userInput = "";
   back_stars = [];
 
