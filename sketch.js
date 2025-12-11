@@ -1323,12 +1323,12 @@ function reset() {
 
   rect(btnX, btnY, btnW, btnH, 10);
 
-  fill(0);
+  fill(255);
   textAlign(CENTER, CENTER);
   textSize(18);
   text("처음으로", btnX + btnW / 2, btnY + btnH / 2);
   text(
-    "15초 후 자동으로 처음 화면으로 돌아갑니다.",
+    "1분 후 자동으로 처음 화면으로 돌아갑니다.",
     btnX + btnW / 2,
     (btnY + btnH / 2) * 0.5
   );
