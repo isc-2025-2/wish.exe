@@ -14,8 +14,6 @@ let hasCalledLLM = false;
 
 let hasUploadedCapture = false;
 
-let targetBase = null;
-
 let starColorIndex = 0;
 let targetColor = null;
 
@@ -87,22 +85,6 @@ function uploadCapture(base64) {
       if (qrcodeSkeletonElement) qrcodeSkeletonElement.style.opacity = 0;
     });
 }
-
-const emotionColors = {
-  0: { r: 180, g: 200, b: 255 },
-  1: { r: 90, g: 90, b: 160 },
-  2: { r: 255, g: 230, b: 100 },
-  3: { r: 255, g: 120, b: 90 },
-  4: { r: 255, g: 200, b: 30 },
-};
-
-const emotionLums = {
-  0: 13,
-  1: 16,
-  2: 19,
-  3: 21,
-  4: 24,
-};
 
 const baseStarImages = {};
 
@@ -1567,5 +1549,4 @@ function hardResetToMain() {
 
   mode = "main";
   hasStartedStarColoring = false;
-  targetBase = null;
 }
