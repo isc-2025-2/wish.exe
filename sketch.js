@@ -14,13 +14,9 @@ let hasCalledLLM = false;
 
 let hasUploadedCapture = false;
 
-let targetBase = null;
-
 let starColorIndex = 0;
-let targetColor = null;
 
 let starLumIndex = 0; //stars_lum
-let targetLum = null;
 
 let factLoading = null;
 let mythLoading = null;
@@ -54,6 +50,12 @@ let qrcodeLoadingElement;
 let qrcodeSkeletonElement;
 let uploadRequestId = 0;
 
+let resetButtonImg = null;
+
+const LARGE_TEXT_SIZE = 52;
+const MEDIUM_TEXT_SIZE = 40;
+const SMALL_TEXT_SIZE = 32;
+
 function uploadCapture(base64) {
   if (!base64 || hasUploadedCapture) return;
   hasUploadedCapture = true;
@@ -81,22 +83,6 @@ function uploadCapture(base64) {
       if (qrcodeSkeletonElement) qrcodeSkeletonElement.style.opacity = 0;
     });
 }
-
-const emotionColors = {
-  0: { r: 180, g: 200, b: 255 },
-  1: { r: 90, g: 90, b: 160 },
-  2: { r: 255, g: 230, b: 100 },
-  3: { r: 255, g: 120, b: 90 },
-  4: { r: 255, g: 200, b: 30 },
-};
-
-const emotionLums = {
-  0: 13,
-  1: 16,
-  2: 19,
-  3: 21,
-  4: 24,
-};
 
 const baseStarImages = {};
 
@@ -258,7 +244,7 @@ async function callLLM(systemPrompt, userText) {
     }),
   });
 
-  await delay(5000);
+  await delay(10000);
 
   const data = await res.json();
   const reply = data.choices?.[0]?.message?.content ?? "(no reply)";
@@ -289,13 +275,13 @@ function loadingUI() {
     lastTextChange = millis();
   }
 
-  textSize(32);
+  textSize(rh(MEDIUM_TEXT_SIZE));
   text(loadingMessages[loadingTextIndex], width / 2, height * 0.3);
 
   let dots = floor((millis() / 400) % 4);
   let dotString = ".".repeat(dots);
 
-  textSize(28);
+  textSize(rh(MEDIUM_TEXT_SIZE));
   text(dotString, width / 2, height * 0.38);
 }
 
@@ -356,9 +342,9 @@ function renderMainStars() {
 function renderQuestionText(txt) {
   fill(255);
   textAlign(CENTER, CENTER);
-  textSize(28);
+  textSize(rh(MEDIUM_TEXT_SIZE));
 
-  text(txt, width / 2, height * 0.67);
+  text(txt, width / 2, height * 0.68);
 }
 
 function getUserInput() {
@@ -367,6 +353,35 @@ function getUserInput() {
     inputBox.remove();
     inputBox = null;
   }
+}
+
+let showInputWarning = false;
+let inputWarningStartTime = 0;
+
+function isInputEmpty() {
+  if (!inputBox) return true;
+  const value = inputBox.value().trim();
+  return value === "";
+}
+
+function drawInputWarning() {
+  if (!showInputWarning) return;
+
+  const DURATION = 1500;
+  if (millis() - inputWarningStartTime > DURATION) {
+    showInputWarning = false;
+    return;
+  }
+
+  const x = width / 2;
+  const y = height * 0.95;
+
+  push();
+  fill(255, 80, 80);
+  textAlign(CENTER, CENTER);
+  textSize(rh(SMALL_TEXT_SIZE));
+  text("내용을 입력한 뒤 Enter를 눌러주세요.", x, y);
+  pop();
 }
 
 function renderAnswerInput() {
@@ -380,14 +395,18 @@ function renderAnswerInput() {
     inputBox.position(x, y);
     inputBox.size(600, 60);
 
-    inputBox.style("font-size", "24px");
+    inputBox.style("font-size", `${rh(SMALL_TEXT_SIZE)}px`);
     inputBox.style("color", "white");
     inputBox.style("text-align", "center");
     inputBox.style("background", "none");
     inputBox.style("outline", "none");
     inputBox.style("border", "none");
     inputBox.style("font-family", "pokemon");
+    inputBox.attribute("placeholder", "여기에 입력하세요...");
+    inputBox.attribute("required", "true");
   }
+
+  drawInputWarning();
 }
 
 function stars_loc() {
@@ -455,6 +474,7 @@ function preload() {
   font = loadFont("fonts/pokemon.ttf");
   dialogImage = loadImage("images/dialog.png");
   inputImage = loadImage("images/input.png");
+  resetButtonImg = loadImage("images/reset.png");
   for (let i = 0; i < 5; i++) {
     baseStarImages[i] = loadImage(`images/stars/${i}/star.png`);
   }
@@ -577,7 +597,7 @@ function keyPressed() {
   }
   // 인트로에서 Enter -> 다음 문장으로
   else if (keyCode === ENTER && mode === "intro") {
-    if (textCount < 3) {
+    if (textCount < 4) {
       textCount += 1; // 0→1→2→3
     } else {
       mode = "question_1"; // 마지막 문장 보고 나면 다음 화면으로
@@ -590,6 +610,24 @@ function keyPressed() {
     input_3();
   } else if (keyCode === ENTER && mode === "question_4") {
     input_4();
+  }
+
+  if (
+    keyCode === ESCAPE ||
+    (keyCode === BACKSPACE && !mode.startsWith("question_"))
+  ) {
+    handleBack();
+    return false;
+  }
+}
+
+function handleBack() {
+  if (mode === "intro") {
+    if (textCount > 0) {
+      textCount -= 1;
+    } else {
+      mode = "main";
+    }
   }
 }
 
@@ -666,7 +704,6 @@ function backgroundStar() {
   drawShootingStars();
 
   if (mode === "main") {
-    console.log("renderSavedStars: length =", userStars.length);
     renderSavedStars();
   }
 }
@@ -687,7 +724,6 @@ function drawImageAspect(img, x, y, maxW, maxH) {
 function main_frame() {
   stroke(255);
   fill(255);
-
   renderSavedStars();
 
   drawImageAspect(titleImage, width * 0.5, height * 0.45, width, height);
@@ -703,8 +739,7 @@ function renderLoadingText(textString) {
   const paddingX = 64;
   const paddingY = 16;
 
-  const fontSize = 24;
-  textSize(fontSize);
+  textSize(rh(SMALL_TEXT_SIZE));
   textAlign(LEFT, TOP);
 
   let maxLineWidth = 0;
@@ -715,7 +750,7 @@ function renderLoadingText(textString) {
 
   const bubbleWidth = maxLineWidth + paddingX * 2;
 
-  const lineHeight = fontSize + 8;
+  const lineHeight = rh(SMALL_TEXT_SIZE) + 8;
   const textHeight = lines.length * lineHeight;
 
   const bubbleHeight = textHeight + paddingY * 2;
@@ -751,15 +786,14 @@ function intro() {
 }
 
 function intro_text() {
-  stroke(255);
   fill(255);
   textAlign(CENTER, CENTER);
 
-  textSize(24);
+  textSize(rh(MEDIUM_TEXT_SIZE));
   text("--> Next (Press Enter)", width * 0.8, height * 0.9);
+  text("<-- Back (Backspace)", width * 0.2, height * 0.9);
 
-  // 본문 텍스트
-  textSize(32);
+  textSize(rh(LARGE_TEXT_SIZE));
 
   if (textCount === 0) {
     text(
@@ -790,7 +824,145 @@ function intro_text() {
       width * 0.5,
       height * 0.5
     );
+  } else if (textCount === 4) {
+    renderStarInfo();
   }
+}
+
+function drawTooltip(textStr, x, y) {
+  const padding = 8;
+
+  const tw = textWidth(textStr);
+  const th = textAscent() + textDescent();
+
+  push();
+  rectMode(CENTER);
+  textSize(rh(SMALL_TEXT_SIZE));
+  textAlign(CENTER, CENTER);
+  noStroke();
+  fill(0, 180);
+  rect(x, y - th - 20, tw + padding * 2, th + padding * 2, 6);
+
+  fill(255);
+  text(textStr, x, y - th - 20);
+  pop();
+}
+
+function renderStarInfo() {
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(rh(LARGE_TEXT_SIZE));
+
+  const lineHeight = rh(LARGE_TEXT_SIZE) + 10;
+  const imageSize = rh(50);
+  const gap = rh(80);
+  const imageGap = rh(30);
+
+  const totalHeight = lineHeight + 3 * (lineHeight + gap) + lineHeight * 2;
+  let currentY = height / 2 - totalHeight / 2 + lineHeight / 2;
+
+  text(
+    "3개의 질문에 따라 당신만의 별자리가 완성될 거예요.\n",
+    width / 2,
+    currentY
+  );
+  currentY += lineHeight;
+
+  text("첫 번째 질문으로 별의 모양이,\n", width / 2, currentY);
+  currentY += lineHeight;
+
+  const imagesPerRow = 5;
+  const totalImageWidth =
+    imagesPerRow * imageSize + (imagesPerRow - 1) * imageGap;
+  let imageStartX = width / 2 - totalImageWidth / 2 + imageSize / 2;
+
+  for (let i = 0; i < 5; i++) {
+    const imgX = imageStartX + i * (imageSize + imageGap);
+    imageMode(CENTER);
+
+    const img = baseStarImages[i];
+    let iw = img.width;
+    let ih = img.height;
+    let ratio = min(imageSize / iw, imageSize / ih);
+    let drawW = iw * ratio;
+    let drawH = ih * ratio;
+
+    drawImageAspect(img, imgX, currentY, imageSize, imageSize);
+
+    if (
+      mouseX >= imgX - drawW / 2 &&
+      mouseX <= imgX + drawW / 2 &&
+      mouseY >= currentY - drawH / 2 &&
+      mouseY <= currentY + drawH / 2
+    ) {
+      drawTooltip(emotionMapping[i], imgX, currentY);
+    }
+  }
+  currentY += lineHeight + gap;
+
+  text("두 번째 질문으로 별의 색상이,\n", width / 2, currentY);
+  currentY += lineHeight;
+
+  imageStartX = width / 2 - totalImageWidth / 2 + imageSize / 2;
+  for (let i = 0; i < 5; i++) {
+    const imgX = imageStartX + i * (imageSize + imageGap);
+    imageMode(CENTER);
+
+    const img = coloredStarImages[4][i];
+    let iw = img.width;
+    let ih = img.height;
+    let ratio = min(imageSize / iw, imageSize / ih);
+    let drawW = iw * ratio;
+    let drawH = ih * ratio;
+
+    drawImageAspect(img, imgX, currentY, imageSize, imageSize);
+
+    if (
+      mouseX >= imgX - drawW / 2 &&
+      mouseX <= imgX + drawW / 2 &&
+      mouseY >= currentY - drawH / 2 &&
+      mouseY <= currentY + drawH / 2
+    ) {
+      drawTooltip(emotionMapping[i], imgX, currentY);
+    }
+  }
+  currentY += lineHeight + gap;
+
+  text("세 번째 질문으로 별의 밝기가 결정될 거예요.\n", width / 2, currentY);
+  currentY += lineHeight;
+
+  imageStartX = width / 2 - totalImageWidth / 2 + imageSize / 2;
+  for (let i = 0; i < 5; i++) {
+    const scale = 1.5 + i * 0.15;
+    const imgX = imageStartX + i * (imageSize + imageGap);
+    imageMode(CENTER);
+
+    const img = lumStarImages[4][4][i];
+    let iw = img.width;
+    let ih = img.height;
+    let ratio = min((imageSize * scale) / iw, (imageSize * scale) / ih);
+    let drawW = iw * ratio;
+    let drawH = ih * ratio;
+
+    drawImageAspect(img, imgX, currentY, imageSize * scale, imageSize * scale);
+
+    if (
+      mouseX >= imgX - drawW / 2 &&
+      mouseX <= imgX + drawW / 2 &&
+      mouseY >= currentY - drawH / 2 &&
+      mouseY <= currentY + drawH / 2
+    ) {
+      drawTooltip(lumMapping[i], imgX, currentY);
+    }
+  }
+  currentY += lineHeight + gap;
+  textSize(rh(SMALL_TEXT_SIZE));
+  fill(128);
+  text(
+    "각 별 위에 마우스를 올리면 별의 정보를 확인할 수 있어요.\n",
+    width / 2,
+    currentY
+  );
 }
 
 //질문 1
@@ -812,6 +984,12 @@ function keyTyped() {
 }
 
 function input_1() {
+  if (isInputEmpty()) {
+    showInputWarning = true;
+    inputWarningStartTime = millis();
+    return;
+  }
+  showInputWarning = false;
   getUserInput();
   mode = "loading_1";
   loadingStartTime = millis();
@@ -860,6 +1038,12 @@ function question_2() {
 }
 
 function input_2() {
+  if (isInputEmpty()) {
+    showInputWarning = true;
+    inputWarningStartTime = millis();
+    return;
+  }
+  showInputWarning = false;
   getUserInput();
   mode = "loading_2";
   emotionResult = null;
@@ -939,6 +1123,12 @@ function question_3() {
 }
 
 function input_3() {
+  if (isInputEmpty()) {
+    showInputWarning = true;
+    inputWarningStartTime = millis();
+    return;
+  }
+  showInputWarning = false;
   getUserInput();
   emotionResult = null;
   hasCalledLLM = false;
@@ -988,7 +1178,7 @@ function lumNextStar() {
   let img =
     lumStarImages[emotionResults[0]][emotionResults[1]][intensityResult];
   stars[starLumIndex].image = img;
-  stars[starLumIndex].sizeScale = 1.25;
+  stars[starLumIndex].sizeScale = 2;
   triggerPop(stars[starLumIndex]);
   starLumIndex++;
 
@@ -1039,6 +1229,12 @@ function question_4() {
 }
 
 function input_4() {
+  if (isInputEmpty()) {
+    showInputWarning = true;
+    inputWarningStartTime = millis();
+    return;
+  }
+  showInputWarning = false;
   getUserInput();
   mode = "drag_stars";
   hasCalledLLM = false;
@@ -1136,7 +1332,6 @@ function mousePressed() {
   }
 }
 
-
 function snapIfStarClose() {
   if (draggedStarIndex === -1) return;
   if (!targetPositions || targetPositions.length === 0) return;
@@ -1169,7 +1364,6 @@ function snapIfStarClose() {
     }
   }
 }
-
 
 function mouseDragged() {
   if (mode === "drag_stars" && draggedStarIndex !== -1) {
@@ -1226,7 +1420,7 @@ function draw_dragImage() {
   } else {
     fill(255);
     textAlign(CENTER, CENTER);
-    textSize(24);
+    textSize(rh(MEDIUM_TEXT_SIZE));
     text("이미지를 불러오는 중입니다...", width / 2, height / 2);
   }
 }
@@ -1262,7 +1456,7 @@ async function goToLastMode() {
 }
 
 function renderDragInstruction() {
-  textSize(24);
+  textSize(rh(MEDIUM_TEXT_SIZE));
   textAlign(CENTER, CENTER);
   fill(255);
 
@@ -1290,19 +1484,21 @@ function last() {
   draw_dragImage();
   renderMainStars();
 
-  textSize(24);
+  textSize(rh(MEDIUM_TEXT_SIZE));
   textAlign(CENTER, CENTER);
   fill(255);
   text(userInput, width / 2, height * 0.8);
 
-  let cropped = get(
-    getDragImageXBounds().startX,
-    0,
-    getDragImageXBounds().width,
-    windowHeight
-  );
-  let base64 = cropped.canvas.toDataURL("image/png");
-  uploadCapture(base64);
+  if (!hasUploadedCapture) {
+    let cropped = get(
+      getDragImageXBounds().startX,
+      0,
+      getDragImageXBounds().width,
+      windowHeight
+    );
+    let base64 = cropped.canvas.toDataURL("image/png");
+    uploadCapture(base64);
+  }
 
   if (!lastStarSaved) {
     saveCurrentStar();
@@ -1389,7 +1585,7 @@ function saveCurrentStar() {
   userStars.push(userImg);
 
   if (userStars.length > MAX_USER_STARS) {
-    userStars.shift()
+    userStars.shift();
   }
 }
 
@@ -1482,22 +1678,33 @@ function radar_chart() {
 
 function reset() {
   fill(255);
-  const btnX = width - width * 0.15;
-  const btnY = 100;
-  const btnW = width * 0.1;
-  const btnH = height * 0.1;
-
-  rect(btnX, btnY, btnW, btnH, 10);
-
-  fill(0);
   textAlign(CENTER, CENTER);
-  textSize(18);
-  text("처음으로", btnX + btnW / 2, btnY + btnH / 2);
-  fill(255);
-  text(
-    "1분 후 자동으로 처음 화면으로 돌아갑니다.",
-    btnX + btnW / 2,
-    (btnY + btnH / 2) * 0.5
+
+  const col = FlexColumn({
+    x: width - rw(250),
+    y: rh(100),
+    width: rw(200),
+    align: "center",
+    gap: rh(-24),
+  });
+
+  imageMode(CENTER);
+  col.add(
+    () => {
+      drawImageAspect(resetButtonImg, 0, 0, rw(100), rh(100));
+    },
+    rh(100),
+    rw(100)
+  );
+
+  textSize(rh(SMALL_TEXT_SIZE));
+  const textW = textWidth("1분 후 자동으로처음 화면으로 돌아갑니다.");
+  col.add(
+    () => {
+      text("1분 후 자동으로\n처음 화면으로 돌아갑니다.", 0, 0);
+    },
+    rh(30),
+    textW
   );
   if (!resetScheduled) {
     resetScheduled = true;
@@ -1529,10 +1736,8 @@ function hardResetToMain() {
   emotionResults.fill(null);
 
   starColorIndex = 0;
-  targetColor = null;
 
   starLumIndex = 0;
-  targetLum = null;
 
   factLoading = null;
 
@@ -1553,5 +1758,4 @@ function hardResetToMain() {
 
   mode = "main";
   hasStartedStarColoring = false;
-  targetBase = null;
 }
