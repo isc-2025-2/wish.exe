@@ -54,6 +54,8 @@ let qrcodeLoadingElement;
 let qrcodeSkeletonElement;
 let uploadRequestId = 0;
 
+let resetButtonImg = null;
+
 function uploadCapture(base64) {
   if (!base64 || hasUploadedCapture) return;
   hasUploadedCapture = true;
@@ -455,6 +457,7 @@ function preload() {
   font = loadFont("fonts/pokemon.ttf");
   dialogImage = loadImage("images/dialog.png");
   inputImage = loadImage("images/input.png");
+  resetButtonImg = loadImage("images/reset.png");
   for (let i = 0; i < 5; i++) {
     baseStarImages[i] = loadImage(`images/stars/${i}/star.png`);
   }
@@ -497,50 +500,52 @@ function setup() {
 function draw() {
   backgroundStar();
 
-  switch (mode) {
-    case "main":
-      main_frame();
-      break;
-    case "intro":
-      intro();
-      break;
-    case "loading_1":
-      loading_1();
-      break;
-    case "description_1":
-      description_1();
-      break;
-    case "question_1":
-      question_1();
-      break;
-    case "description_2":
-      description_2();
-      break;
-    case "loading_2":
-      loading_2();
-      break;
-    case "question_2":
-      question_2();
-      break;
-    case "loading_3":
-      loading_3();
-      break;
-    case "description_3":
-      description_3();
-      break;
-    case "question_3":
-      question_3();
-      break;
-    case "question_4":
-      question_4();
-      break;
-    case "drag_stars":
-      drag_stars();
-      break;
-    case "last":
-      last();
-      break;
-  }
+  last();
+
+  // switch (mode) {
+  //   case "main":
+  //     main_frame();
+  //     break;
+  //   case "intro":
+  //     intro();
+  //     break;
+  //   case "loading_1":
+  //     loading_1();
+  //     break;
+  //   case "description_1":
+  //     description_1();
+  //     break;
+  //   case "question_1":
+  //     question_1();
+  //     break;
+  //   case "description_2":
+  //     description_2();
+  //     break;
+  //   case "loading_2":
+  //     loading_2();
+  //     break;
+  //   case "question_2":
+  //     question_2();
+  //     break;
+  //   case "loading_3":
+  //     loading_3();
+  //     break;
+  //   case "description_3":
+  //     description_3();
+  //     break;
+  //   case "question_3":
+  //     question_3();
+  //     break;
+  //   case "question_4":
+  //     question_4();
+  //     break;
+  //   case "drag_stars":
+  //     drag_stars();
+  //     break;
+  //   case "last":
+  //     last();
+  //     break;
+  // }
 }
 
 function description_1() {
@@ -666,7 +671,6 @@ function backgroundStar() {
   drawShootingStars();
 
   if (mode === "main") {
-    console.log("renderSavedStars: length =", userStars.length);
     renderSavedStars();
   }
 }
@@ -1136,7 +1140,6 @@ function mousePressed() {
   }
 }
 
-
 function snapIfStarClose() {
   if (draggedStarIndex === -1) return;
   if (!targetPositions || targetPositions.length === 0) return;
@@ -1169,7 +1172,6 @@ function snapIfStarClose() {
     }
   }
 }
-
 
 function mouseDragged() {
   if (mode === "drag_stars" && draggedStarIndex !== -1) {
@@ -1389,7 +1391,7 @@ function saveCurrentStar() {
   userStars.push(userImg);
 
   if (userStars.length > MAX_USER_STARS) {
-    userStars.shift()
+    userStars.shift();
   }
 }
 
@@ -1482,22 +1484,33 @@ function radar_chart() {
 
 function reset() {
   fill(255);
-  const btnX = width - width * 0.15;
-  const btnY = 100;
-  const btnW = width * 0.1;
-  const btnH = height * 0.1;
-
-  rect(btnX, btnY, btnW, btnH, 10);
-
-  fill(0);
   textAlign(CENTER, CENTER);
-  textSize(18);
-  text("처음으로", btnX + btnW / 2, btnY + btnH / 2);
-  fill(255);
-  text(
-    "1분 후 자동으로 처음 화면으로 돌아갑니다.",
-    btnX + btnW / 2,
-    (btnY + btnH / 2) * 0.5
+
+  const col = FlexColumn({
+    x: width - rw(250),
+    y: rh(100),
+    width: rw(200),
+    align: "center",
+    gap: rh(-24),
+  });
+
+  imageMode(CENTER);
+  col.add(
+    () => {
+      drawImageAspect(resetButtonImg, 0, 0, rw(100), rh(100));
+    },
+    rh(100),
+    rw(100)
+  );
+
+  textSize(rh(24));
+  const textW = textWidth("1분 후 자동으로처음 화면으로 돌아갑니다.");
+  col.add(
+    () => {
+      text("1분 후 자동으로\n처음 화면으로 돌아갑니다.", 0, 0);
+    },
+    rh(30),
+    textW
   );
   if (!resetScheduled) {
     resetScheduled = true;
