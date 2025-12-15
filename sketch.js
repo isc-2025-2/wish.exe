@@ -975,7 +975,7 @@ function lumNextStar() {
   let img =
     lumStarImages[emotionResults[0]][emotionResults[1]][intensityResult];
   stars[starLumIndex].image = img;
-  stars[starLumIndex].sizeScale = 1.25;
+  stars[starLumIndex].sizeScale = 2;
   triggerPop(stars[starLumIndex]);
   starLumIndex++;
 
