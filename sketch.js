@@ -487,50 +487,52 @@ function setup() {
 function draw() {
   backgroundStar();
 
-  switch (mode) {
-    case "main":
-      main_frame();
-      break;
-    case "intro":
-      intro();
-      break;
-    case "loading_1":
-      loading_1();
-      break;
-    case "description_1":
-      description_1();
-      break;
-    case "question_1":
-      question_1();
-      break;
-    case "description_2":
-      description_2();
-      break;
-    case "loading_2":
-      loading_2();
-      break;
-    case "question_2":
-      question_2();
-      break;
-    case "loading_3":
-      loading_3();
-      break;
-    case "description_3":
-      description_3();
-      break;
-    case "question_3":
-      question_3();
-      break;
-    case "question_4":
-      question_4();
-      break;
-    case "drag_stars":
-      drag_stars();
-      break;
-    case "last":
-      last();
-      break;
-  }
+  renderStarInfo();
+
+  // switch (mode) {
+  //   case "main":
+  //     main_frame();
+  //     break;
+  //   case "intro":
+  //     intro();
+  //     break;
+  //   case "loading_1":
+  //     loading_1();
+  //     break;
+  //   case "description_1":
+  //     description_1();
+  //     break;
+  //   case "question_1":
+  //     question_1();
+  //     break;
+  //   case "description_2":
+  //     description_2();
+  //     break;
+  //   case "loading_2":
+  //     loading_2();
+  //     break;
+  //   case "question_2":
+  //     question_2();
+  //     break;
+  //   case "loading_3":
+  //     loading_3();
+  //     break;
+  //   case "description_3":
+  //     description_3();
+  //     break;
+  //   case "question_3":
+  //     question_3();
+  //     break;
+  //   case "question_4":
+  //     question_4();
+  //     break;
+  //   case "drag_stars":
+  //     drag_stars();
+  //     break;
+  //   case "last":
+  //     last();
+  //     break;
+  // }
 }
 
 function description_1() {
@@ -567,7 +569,7 @@ function keyPressed() {
   }
   // 인트로에서 Enter -> 다음 문장으로
   else if (keyCode === ENTER && mode === "intro") {
-    if (textCount < 3) {
+    if (textCount < 4) {
       textCount += 1; // 0→1→2→3
     } else {
       mode = "question_1"; // 마지막 문장 보고 나면 다음 화면으로
@@ -777,7 +779,110 @@ function intro_text() {
       width * 0.5,
       height * 0.5
     );
+  } else if (textCount === 4) {
+    renderStarInfo();
   }
+}
+
+function renderStarInfo() {
+  stroke(255);
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(rh(LARGE_TEXT_SIZE));
+
+  const lineHeight = rh(LARGE_TEXT_SIZE) + 10;
+  const imageSize = rh(50);
+
+  const rowHeight = lineHeight;
+  const totalHeight = lineHeight + 3 * rowHeight + rh(200);
+  const startY = totalHeight * 0.5;
+
+  const col = FlexColumn({
+    x: 0,
+    y: startY,
+    width: width,
+    align: "center",
+    gap: rh(30),
+  });
+
+  col.add(() => {
+    text("3개의 질문에 따라 당신만의 별자리가 완성될 거예요.\n", 0, 0);
+  }, lineHeight);
+
+  col.add(() => {
+    text("첫 번째 질문으로 별의 모양이,\n", 0, 0);
+  }, lineHeight);
+
+  col.add(() => {
+    const imageGap = rh(30);
+
+    const row = FlexRow({
+      x: -200,
+      y: -lineHeight,
+      height: rowHeight,
+      align: "center",
+      gap: imageGap,
+    });
+
+    for (let i = 0; i < 5; i++) {
+      row.add(() => {
+        imageMode(CENTER);
+        drawImageAspect(baseStarImages[i], 0, 0, imageSize, imageSize);
+      }, imageSize);
+    }
+  }, rowHeight);
+
+  col.add(() => {
+    text("두 번째 질문으로 별의 색상이,\n", 0, 0);
+  }, lineHeight);
+
+  col.add(() => {
+    const imageGap = rh(30);
+
+    const row = FlexRow({
+      x: -200,
+      y: -lineHeight,
+      height: rowHeight,
+      align: "center",
+      gap: imageGap,
+    });
+
+    for (let i = 0; i < 5; i++) {
+      row.add(() => {
+        imageMode(CENTER);
+        drawImageAspect(coloredStarImages[4][i], 0, 0, imageSize, imageSize);
+      }, imageSize);
+    }
+  }, rowHeight);
+
+  col.add(() => {
+    text("세 번째 질문으로 별의 밝기가 결정될 거예요.\n", 0, 0);
+  }, lineHeight);
+
+  col.add(() => {
+    const imageGap = rh(30);
+    const row = FlexRow({
+      x: -200,
+      y: -lineHeight,
+      height: rowHeight,
+      align: "center",
+      gap: imageGap,
+    });
+
+    for (let i = 0; i < 5; i++) {
+      const scale = 1.5 + i * 0.15;
+      row.add(() => {
+        imageMode(CENTER);
+        drawImageAspect(
+          lumStarImages[4][4][i],
+          0,
+          0,
+          imageSize * scale,
+          imageSize * scale
+        );
+      }, imageSize);
+    }
+  }, rowHeight);
 }
 
 //질문 1
