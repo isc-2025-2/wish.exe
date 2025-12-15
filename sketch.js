@@ -244,7 +244,7 @@ async function callLLM(systemPrompt, userText) {
     }),
   });
 
-  await delay(5000);
+  await delay(10000);
 
   const data = await res.json();
   const reply = data.choices?.[0]?.message?.content ?? "(no reply)";
