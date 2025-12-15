@@ -15,10 +15,8 @@ let hasCalledLLM = false;
 let hasUploadedCapture = false;
 
 let starColorIndex = 0;
-let targetColor = null;
 
 let starLumIndex = 0; //stars_lum
-let targetLum = null;
 
 let factLoading = null;
 let mythLoading = null;
@@ -1491,14 +1489,16 @@ function last() {
   fill(255);
   text(userInput, width / 2, height * 0.8);
 
-  let cropped = get(
-    getDragImageXBounds().startX,
-    0,
-    getDragImageXBounds().width,
-    windowHeight
-  );
-  let base64 = cropped.canvas.toDataURL("image/png");
-  uploadCapture(base64);
+  if (!hasUploadedCapture) {
+    let cropped = get(
+      getDragImageXBounds().startX,
+      0,
+      getDragImageXBounds().width,
+      windowHeight
+    );
+    let base64 = cropped.canvas.toDataURL("image/png");
+    uploadCapture(base64);
+  }
 
   if (!lastStarSaved) {
     saveCurrentStar();
@@ -1736,10 +1736,8 @@ function hardResetToMain() {
   emotionResults.fill(null);
 
   starColorIndex = 0;
-  targetColor = null;
 
   starLumIndex = 0;
-  targetLum = null;
 
   factLoading = null;
 
