@@ -55,6 +55,9 @@ let uploadRequestId = 0;
 
 let resetButtonImg = null;
 
+let lastModeTransitionToken = 0;
+let loadingLastScheduled = false;
+
 let constellationSampleStarPositions = null;
 let constellationSampleStartTime = null;
 
@@ -637,7 +640,6 @@ function setup() {
 }
 
 function draw() {
-  // last();
   backgroundStar();
 
   switch (mode) {
@@ -1744,16 +1746,16 @@ function mousePressed() {
       }
     }
   } else if (mode === "last") {
-    const btnX = width - width * 0.15;
-    const btnY = 100;
-    const btnW = width * 0.1;
-    const btnH = height * 0.1;
+    const btnX = width - rw(150);
+    const btnY = rh(100);
+    const btnW = rw(100);
+    const btnH = rh(100);
 
     if (
-      mouseX > btnX &&
-      mouseX < btnX + btnW &&
-      mouseY > btnY &&
-      mouseY < btnY + btnH
+      mouseX > btnX - btnW / 2 &&
+      mouseX < btnX + btnW / 2 &&
+      mouseY > btnY - btnH / 2 &&
+      mouseY < btnY + btnH / 2
     ) {
       hardResetToMain();
     }
@@ -1878,8 +1880,11 @@ function drag_stars() {
 let lastEnteredAt = 0; //last 모드 진입 시각
 
 async function goToLastMode() {
+  const token = ++lastModeTransitionToken;
   await delay(1000);
+  if (token !== lastModeTransitionToken) return;
   mode = "loadingLast";
+  loadingLastScheduled = false;
   lastEnteredAt = millis();
 }
 
@@ -1952,13 +1957,19 @@ function loadingLast() {
   textSize(rh(MEDIUM_TEXT_SIZE));
   text(dotString, width / 2, height * 0.5);
 
-  goToLastMode_2();
+  if (!loadingLastScheduled) {
+    loadingLastScheduled = true;
+    goToLastMode_2();
+  }
 }
 
 let loadingLasttime = 0;
 
 async function goToLastMode_2() {
+  const token = lastModeTransitionToken;
   await delay(5000);
+  if (token !== lastModeTransitionToken) return;
+  if (mode !== "loadingLast") return;
   mode = "last";
   loadingLasttime = millis();
 }
@@ -2192,32 +2203,17 @@ function reset() {
   fill(255);
   textAlign(CENTER, CENTER);
 
-  const col = FlexColumn({
-    x: width - rw(250),
-    y: rh(100),
-    width: rw(200),
-    align: "center",
-    gap: rh(-24),
-  });
-
   imageMode(CENTER);
-  col.add(
-    () => {
-      drawImageAspect(resetButtonImg, 0, 0, rw(100), rh(100));
-    },
-    rh(100),
-    rw(100)
-  );
+  const resetButtonX = width - rw(150);
+  const resetButtonY = rh(100);
+
+  drawImageAspect(resetButtonImg, resetButtonX, resetButtonY, rw(100), rh(100));
 
   textSize(rh(SMALL_TEXT_SIZE));
-  const textW = textWidth("1분 후 자동으로처음 화면으로 돌아갑니다.");
-  col.add(
-    () => {
-      text("1분 후 자동으로\n처음 화면으로 돌아갑니다.", 0, 0);
-    },
-    rh(30),
-    textW
-  );
+  textAlign(CENTER, TOP);
+  fill(255);
+  const textY = resetButtonY + rh(100) / 2 + rh(10);
+  text("1분 후 자동으로\n처음 화면으로 돌아갑니다.", resetButtonX, textY);
   if (!resetScheduled) {
     resetScheduled = true;
     timer = setTimeout(() => {
@@ -2233,6 +2229,8 @@ function reset() {
 
 function hardResetToMain() {
   clearTimeout(timer);
+  lastModeTransitionToken += 1;
+  loadingLastScheduled = false;
   uploadRequestId += 1;
   userInput = "";
   userInputs = [];
@@ -2273,6 +2271,7 @@ function hardResetToMain() {
   lastStarSaved = false;
 
   lastEnteredAt = 0;
+  loadingLasttime = 0;
 
   mode = "main";
   hasStartedStarColoring = false;
