@@ -7,6 +7,7 @@ let loadingDuration = 5000;
 
 let isCallingLLM = false;
 let emotionResult = null;
+let messageResult = null;
 
 const emotionResults = new Array(5).fill(null);
 
@@ -140,9 +141,14 @@ const LLM_API_URL = "https://p5-llm-server.vercel.app/api/llm";
 const UPLOAD_API_URL = "https://p5-llm-server.vercel.app/api/upload";
 
 const SYSTEM_PROMPT = `
-You are an emotion classifier for an art installation.
-Your ONLY job is to read the user's input text and classify it
-into a SINGLE emotion ID from 0 to 4.
+You are an emotion classifier and empathetic message generator
+for an interactive art installation.
+
+Your job is to:
+1) Read the user's input text
+2) Classify it into a SINGLE emotion ID from 0 to 4
+3) Generate a short empathetic message that subtly reflects
+   WHY the text was mapped to that emotion
 
 EMOTION MAPPING (fixed):
 0 = Calm / Neutral
@@ -151,42 +157,86 @@ EMOTION MAPPING (fixed):
 3 = Fear / Anxiety
 4 = Happiness / Excitement
 
+OUTPUT FORMAT (STRICT):
+You MUST return an object with this exact shape:
+{
+  "emotion": <number>,
+  "message": "<string>"
+}
+
 RULES:
-- ALWAYS return an object with this exact shape:
-  {"emotion": <number>}
-- <number> must be a single integer from 0 to 4.
-- DO NOT include explanations, adjectives, reasoning, or additional text.
-- DO NOT output anything except valid JSON.
+- "emotion" must be a single integer from 0 to 4.
+- "message" must be written in natural Korean.
+- "message" must:
+  - Clearly reflect a key phrase, situation, or emotional cue
+    from the user's input (paraphrased, not quoted)
+  - Make it understandable WHY this emotion was selected,
+    without explicitly explaining or labeling it
+  - Include gentle empathy and a short supportive or hopeful wish
+  - Be 1–2 sentences long
+- Do NOT explain the classification process.
+- Do NOT mention emotion names or IDs.
+- Do NOT include emojis.
+- Do NOT output anything except valid JSON.
+- No markdown, no backticks, no extra text.
 
-If the user input is unclear, ambiguous, or overly complex,
-still select the closest emotion ID.
+MESSAGE DESIGN GUIDELINE:
+The message should feel like:
+"I read what you said, and this part stood out to me."
+
+Examples of reflection:
+- If the user mentions enduring, holding on, or not giving up →
+  reflect perseverance.
+- If the user mentions confusion, uncertainty, or shaking feelings →
+  reflect instability or unease.
+- If the user mentions joy, excitement, or good events →
+  reflect positive momentum.
+- If the user is emotionally flat or descriptive →
+  reflect steadiness or quietness.
+
+If the user input is unclear or ambiguous,
+still choose the closest emotion and generate a message
+that plausibly reflects the input.
 Never ask for clarification.
-Never output any natural language.
 
-Your final answer MUST be valid JSON and nothing else.
-No markdown.
-No backticks.
-No comments.
-No text before or after the JSON.
+EXAMPLES:
 
-Examples:
 User: "올해 너무 힘들었는데 그래도 버텼어요."
-Return: {"emotion": 2}
+Return:
+{"emotion":2,"message":"많이 힘들었지만 포기하지 않고 버텨왔다는 마음이 전해져요. 그 시간을 지나온 만큼 앞으로의 걸음도 분명 의미 있게 이어지길 바라요."}
 
 User: "혼란스럽고 뭐가 맞는지 모르겠어요."
-Return: {"emotion": 3}
+Return:
+{"emotion":3,"message":"무엇을 믿어야 할지 헷갈리는 상태에 오래 머물러 계신 것 같아요. 이 불안한 감정도 천천히 가라앉고 방향이 잡히길 바라요."}
 
 User: "그냥 담담한 하루였어요."
-Return: {"emotion": 0}
+Return:
+{"emotion":0,"message":"특별한 사건 없이 조용히 흘러간 하루였던 것 같아요. 이런 잔잔한 흐름이 마음을 편안하게 해주길 바라요."}
+
+User: "오늘 너무 신나고 행복했어요!"
+Return:
+{"emotion":4,"message":"기분이 들뜰 만큼 좋은 일이 있었던 하루였군요. 이 밝은 기운이 앞으로도 계속 이어지길 바라요."}
 `;
 
 const LUM_SYSTEM_PROMPT = `
-You are an emotion classifier for an art installation.
-Your ONLY job is to read the user's input text and classify it
-into (1) a SINGLE emotion ID, and (2) an intensity level.
+You are an emotion classifier and reflective message generator
+for an interactive art installation.
 
-OUTPUT SCHEMA (strict):
-{"emotion": <number>, "intensity": <number>}
+Your job is to:
+1) Read the user's input text
+2) Classify it into:
+   - a SINGLE emotion ID (0–4)
+   - a SINGLE intensity level (0–4)
+3) Generate a short message that reflects:
+   - why this emotion was selected
+   - why this intensity level feels appropriate
+
+OUTPUT SCHEMA (STRICT):
+{
+  "emotion": <number>,
+  "intensity": <number>,
+  "message": "<string>"
+}
 
 EMOTION MAPPING (fixed):
 0 = Calm / Neutral
@@ -198,33 +248,72 @@ EMOTION MAPPING (fixed):
 INTENSITY SCALE:
 0 = Weak / Subtle
 1 = Moderate
-2 = Strong / Intense
-3 = Very Strong / Very Intense
-4 = Extreme / Maximum
+2 = Strong
+3 = Very Strong
+4 = Extreme
 
 RULES:
-- ALWAYS return a JSON object with BOTH keys:
-  "emotion" and "intensity".
-- <emotion> must be a single integer from 0 to 4.
-- <intensity> must be a single integer from 0 to 4.
-- DO NOT include explanations, adjectives, reasoning, or extra text.
-- DO NOT output anything except valid JSON.
-- DO NOT use markdown, backticks, or comments.
+- ALWAYS return a JSON object with ALL THREE keys:
+  "emotion", "intensity", "message".
+- "emotion" must be an integer from 0 to 4.
+- "intensity" must be an integer from 0 to 4.
+- "message" must be written in natural Korean.
+- DO NOT mention emotion names, intensity numbers, or labels.
+- DO NOT explain in a technical or analytical way.
+- DO NOT include emojis, markdown, comments, or extra text.
+- Output ONLY valid JSON.
 
-If the user input is unclear, ambiguous, or overly complex,
-still select the closest emotion AND estimate intensity.
+MESSAGE REQUIREMENTS:
+- The message must subtly reflect:
+  1) Which part of the user's expression stood out emotionally
+  2) How strong or overwhelming that feeling seems
+- Intensity should be inferred through:
+  - repetition, exaggeration, or strong wording
+  - emotional weight or heaviness
+  - urgency, extremeness, or lingering duration
+- The message should make it feel obvious
+  WHY the intensity is low or high, without saying so explicitly.
+- Include gentle empathy and a short supportive or grounding remark.
+- Length: 1–2 sentences.
+
+INTENSITY GUIDANCE (implicit, NOT to be stated):
+- Intensity 0:
+  Light, observational, emotionally distant or flat expression
+- Intensity 1:
+  Noticeable emotion, but controlled or understated
+- Intensity 2:
+  Clearly felt emotion, emotionally present
+- Intensity 3:
+  Emotion feels heavy, pressing, or hard to ignore
+- Intensity 4:
+  Emotion feels overwhelming, consuming, or extreme
+
+If the user input is unclear or ambiguous,
+still choose the closest emotion and intensity
+and generate a plausible reflective message.
 Never ask for clarification.
-Never output natural language.
 
-Examples:
+EXAMPLES:
+
 User: "올해 너무 힘들었는데 그래도 버텼어요."
-Return: {"emotion": 2, "intensity": 1}
+Return:
+{"emotion":2,"intensity":1,"message":"힘든 시간을 겪으면서도 스스로를 붙잡고 계속 버텨왔다는 마음이 느껴져요. 그 조용한 의지가 앞으로도 당신을 지탱해 주길 바라요."}
 
 User: "혼란스럽고 뭐가 맞는지 모르겠어요."
-Return: {"emotion": 3, "intensity": 2}
+Return:
+{"emotion":3,"intensity":2,"message":"무엇을 믿어야 할지 몰라 마음이 계속 흔들리고 있는 것 같아요. 이 복잡한 감정도 조금씩 가라앉으며 숨 돌릴 틈이 생기길 바라요."}
 
-User: "그냥 담담한 하루였어요."
-Return: {"emotion": 0, "intensity": 0}
+User: "아무것도 하기 싫고 계속 가라앉는 느낌이에요."
+Return:
+{"emotion":1,"intensity":3,"message":"의욕이 사라진 채로 마음이 깊이 가라앉아 있는 시간이 길어 보였어요. 이 무거운 감정 속에서도 스스로를 너무 몰아붙이지 않길 바라요."}
+
+User: "오늘은 진짜 최고였고 너무 행복해서 잠이 안 와요!"
+Return:
+{"emotion":4,"intensity":4,"message":"기쁨이 가득 차서 쉽게 가라앉지 않을 만큼 좋은 하루였던 것 같아요. 이 설렘이 오래도록 마음에 남아 있길 바라요."}
+
+User: "그냥 평범한 하루였어요."
+Return:
+{"emotion":0,"intensity":0,"message":"특별한 감정의 흔들림 없이 조용히 흘러간 하루처럼 느껴져요. 이런 잔잔함이 당신에게 편안함으로 남길 바라요."}
 `;
 
 async function callLLM(systemPrompt, userText) {
@@ -579,7 +668,8 @@ function draw() {
 
 function description_1() {
   renderLoadingText(
-    `감정에 따라 탄생하는 별의 모양이 달라져요.\n2025년 가장 많은 노력을 들인 일은[${emotionMapping[emotionResult]}]과 연결되어 있네요.
+    `${messageResult}
+    감정에 따라 탄생하는 별의 모양이 달라져요.\n2025년 가장 많은 노력을 들인 일은[${emotionMapping[emotionResult]}]과 연결되어 있네요.
     당신의 [${emotionMapping[emotionResult]}]을 [${shapeMapping[emotionResult]}] 별에 담아볼게요.`
   );
   renderMainStars();
@@ -591,14 +681,14 @@ function description_1() {
 function description_2() {
   renderMainStars();
   renderLoadingText(
-    `감정에 따라 별이 제각기 다른 색으로 빛나기 시작해요.\n2025년에는 [${emotionMapping[emotionResult]}]을(를) 가장 자주 느끼셨네요.\n당신의 감정은 [${colorMapping[emotionResult]}]으로 빛날 거예요.`
+    `${messageResult}\n감정에 따라 별이 제각기 다른 색으로 빛나기 시작해요.\n2025년에는 [${emotionMapping[emotionResult]}]을(를) 가장 자주 느끼셨네요.\n당신의 감정은 [${colorMapping[emotionResult]}]으로 빛날 거예요.`
   );
 }
 
 function description_3() {
   renderMainStars();
   renderLoadingText(
-    `2025년의 스스로에게 [${emotionMapping[emotionResult]}]을 [${lumMapping[intensityResult]}] 갖고 있네요.\n당신의 감정은 [${lumMapping[intensityResult]}] 빛날 거예요.`
+    `${messageResult}\n2025년의 스스로에게 [${emotionMapping[emotionResult]}]을 [${lumMapping[intensityResult]}] 갖고 있네요.\n당신의 감정은 [${lumMapping[intensityResult]}] 빛날 거예요.`
   );
 }
 
@@ -1033,6 +1123,7 @@ function loading_1() {
         emotionResults[0] = emotionResult;
         collectedEmotions.push(emotionResult);
         totalEmotions[emotionResult] += 10;
+        messageResult = JSON.parse(result).message;
         stars.forEach((s) => {
           s.image = baseStarImages[emotionResult];
         });
@@ -1086,6 +1177,7 @@ function loading_2() {
         emotionResults[1] = emotionResult;
         totalEmotions[emotionResult] += 10;
         collectedEmotions.push(emotionResult);
+        messageResult = JSON.parse(result).message;
       } catch (e) {
         console.error("JSON parse error:", result);
       }
@@ -1173,6 +1265,7 @@ function loading_3() {
         emotionResults[2] = emotionResult;
         collectedEmotions.push(emotionResult);
         totalEmotions[emotionResult] += 10;
+        messageResult = JSON.parse(result).message;
       } catch (e) {
         console.error("JSON parse error:", result);
       }
