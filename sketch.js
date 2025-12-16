@@ -469,6 +469,15 @@ const lumStarImages = Array.from({ length: 5 }, () =>
 
 function preload() {
   dragImage_1 = loadImage("images/constellation/dragImage_1.png");
+  for (let i = 1; i <= 5; i++) {
+    dragImage[i] = [];   // 각 그룹 초기화
+
+    for (let j = 1; j <= 2; j++) {
+      dragImage[i][j] = loadImage(
+        `images/constellation/dragImage_${i}_${j}.png`
+      );
+    }
+  }
   titleImage = loadImage("images/title.png");
   titleDescription = loadImage("images/title_description.png");
   font = loadFont("fonts/pokemon.ttf");
@@ -1264,7 +1273,7 @@ let drag_index = 0;
 
 function createStarsTargets(drag_index) {
   const targets = [
-    [
+    [ // for test
       { rx: 0.743, ry: 0.234 },
       { rx: 0.664, ry: 0.175 },
       { rx: 0.543, ry: 0.338 },
@@ -1276,6 +1285,58 @@ function createStarsTargets(drag_index) {
       { rx: 0.207, ry: 0.608 },
       { rx: 0.256, ry: 0.773 },
       { rx: 0.061, ry: 0.894 },
+    ],
+    [ //dragImage[1][1]
+      { rx: 0.388, ry: 0.393 },
+      { rx: 0.774, ry: 0.186 },
+      { rx: 0.662, ry: 0.418 },
+      { rx: 0.461, ry: 0.541 },
+      { rx: 0.298, ry: 0.693 },
+      { rx: 0.133, ry: 0.765 },
+      { rx: 0.615, ry: 0.728 },
+      { rx: 0.747, ry: 0.893 },
+    ],
+    [ //dragImage[2][1]
+      { rx: 0.570, ry: 0.457 },
+      { rx: 0.604, ry: 0.796 },
+      { rx: 0.859, ry: 0.868 },
+      { rx: 0.912, ry: 0.493 },
+      { rx: 0.434, ry: 0.295 },
+      { rx: 0.283, ry: 0.123 },
+      { rx: 0.081, ry: 0.177 },
+    ],
+    [ //dragImage[3][1]
+      { rx: 0.402, ry: 0.194 },
+      { rx: 0.252, ry: 0.295 },
+      { rx: 0.380, ry: 0.526 },
+      { rx: 0.458, ry: 0.586 },
+      { rx: 0.566, ry: 0.691 },
+      { rx: 0.502, ry: 0.802 },
+      { rx: 0.615, ry: 0.386 },
+      { rx: 0.764, ry: 0.492 },
+      { rx: 0.920, ry: 0.473 },
+    ],
+    [ //dragImage[4][1]
+      { rx: 0.833, ry: 0.239 },
+      { rx: 0.812, ry: 0.321 },
+      { rx: 0.456, ry: 0.393 },
+      { rx: 0.315, ry: 0.379 },
+      { rx: 0.180, ry: 0.393 },
+      { rx: 0.109, ry: 0.372 },
+      { rx: 0.292, ry: 0.577 },
+      { rx: 0.558, ry: 0.717 },
+      { rx: 0.608, ry: 0.661 },
+    ],
+    [ //dragImage[5][1]
+      { rx: 0.463, ry: 0.141 },
+      { rx: 0.505, ry: 0.393 },
+      { rx: 0.595, ry: 0.545 },
+      { rx: 0.737, ry: 0.524 },
+      { rx: 0.950, ry: 0.440 },
+      { rx: 0.248, ry: 0.514 },
+      { rx: 0.409, ry: 0.670 },
+      { rx: 0.315, ry: 0.864 },
+      { rx: 0.065, ry: 0.455 },
     ],
   ];
 
@@ -1753,6 +1814,11 @@ function reset() {
     }, 60000);
   }
 }
+
+// function interrupt(){
+//   text("처음으로", width*0.1, height*0.1)
+//   hardResetToMain();
+// }
 
 function hardResetToMain() {
   clearTimeout(timer);
