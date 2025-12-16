@@ -744,7 +744,7 @@ function initStars() {
     back_stars.push({
       x: random(width),
       y: random(height),
-      baseSize: random(0.2, 2),
+      baseSize: rh(random(0.2, 4)),
       sizeOffset: random(0, TWO_PI),
       baseBrightness: random(150, 255),
       brightOffset: random(0, TWO_PI),
@@ -795,7 +795,7 @@ function backgroundStar() {
   for (let s of back_stars) {
     const tw = sin(frameCount * s.twinkleSpeed + s.brightOffset);
 
-    const flicker = random(4);
+    const flicker = rh(random(4));
 
     const b = s.baseBrightness + tw * 40 * flicker;
 
