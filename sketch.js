@@ -359,23 +359,39 @@ const loadingMessages = [
   "마음이 향했던 순간들을 가만히 정리하는 중입니다",
 ];
 
-function loadingUI() {
+function loadingUI(position = "top") {
   fill(255);
   textAlign(CENTER, CENTER);
 
-  if (millis() - lastTextChange > 3000) {
-    loadingTextIndex = floor(random(0, loadingMessages.length));
-    lastTextChange = millis();
+  if (position === "top") {
+    if (millis() - lastTextChange > 3000) {
+      loadingTextIndex = floor(random(0, loadingMessages.length));
+      lastTextChange = millis();
+    }
+
+    textSize(rh(MEDIUM_TEXT_SIZE));
+    text(loadingMessages[loadingTextIndex], width / 2, height * 0.3);
+
+    let dots = floor((millis() / 400) % 4);
+    let dotString = ".".repeat(dots);
+
+    textSize(rh(MEDIUM_TEXT_SIZE));
+    text(dotString, width / 2, height * 0.38);
+  } else if (position === "bottom") {
+    if (millis() - lastTextChange > 3000) {
+      loadingTextIndex = floor(random(0, loadingMessages.length));
+      lastTextChange = millis();
+    }
+
+    textSize(rh(SMALL_TEXT_SIZE));
+    text(loadingMessages[loadingTextIndex], width / 2, height * 0.05);
+
+    let dots = floor((millis() / 400) % 4);
+    let dotString = ".".repeat(dots);
+
+    textSize(rh(MEDIUM_TEXT_SIZE));
+    text(dotString, width / 2, height * 0.6);
   }
-
-  textSize(rh(MEDIUM_TEXT_SIZE));
-  text(loadingMessages[loadingTextIndex], width / 2, height * 0.3);
-
-  let dots = floor((millis() / 400) % 4);
-  let dotString = ".".repeat(dots);
-
-  textSize(rh(MEDIUM_TEXT_SIZE));
-  text(dotString, width / 2, height * 0.38);
 }
 
 let revealedStars = 0;
@@ -1397,7 +1413,7 @@ function input_2() {
 
 function loading_2() {
   renderMainStars();
-
+  loadingUI("bottom");
   if (!hasCalledLLM) {
     hasCalledLLM = true;
     callLLM(SYSTEM_PROMPT, userInput).then(async (result) => {
@@ -1484,7 +1500,7 @@ function input_3() {
 
 function loading_3() {
   renderMainStars();
-
+  loadingUI("bottom");
   if (!hasCalledLLM) {
     hasCalledLLM = true;
     callLLM(LUM_SYSTEM_PROMPT, userInput).then(async (result) => {
