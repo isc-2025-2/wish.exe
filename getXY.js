@@ -1,31 +1,41 @@
 
 let points = [];
 let dragImage_1;
-
+let dragImage = [];
 
 function preload() {
-  //나중에 for문으로 전체 image로딩 해도 좋을 것 같습니다.
-  dragImage_1 = loadImage("images/dragImage_1.png");
+  drageImage_1 = loadImage("images/constellation/dragImage_1.png")
+  for (let i = 1; i <= 5; i++) {
+    dragImage[i] = [];   // 각 그룹 초기화
+
+    for (let j = 1; j <= 2; j++) {
+      dragImage[i][j] = loadImage(
+        `images/constellation/dragImage_${i}_${j}.png`
+      );
+    }
+  }
 }
+
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
   imageMode(CENTER);
+  img = dragImage[5][1];
 }
 
 function draw() {
   background(30);
 
-  let originalW = dragImage_1.width;
-  let originalH = dragImage_1.height;
+  let originalW = img.width;
+  let originalH = img.height;
 
-  let scaledW = width * 0.7;
+  let scaledW = width * 0.5;
   let scaledH = originalH * (scaledW / originalW);
 
   let cx = width / 2;
   let cy = height / 2;
 
-  image(dragImage_1, cx, cy, scaledW, scaledH);
+  image(img, cx, cy, scaledW, scaledH);
 
   noStroke();
   fill(255, 0, 0);
@@ -37,10 +47,10 @@ function draw() {
 }
 
 function mousePressed() {
-  let originalW = dragImage_1.width;
-  let originalH = dragImage_1.height;
+  let originalW = img.width;
+  let originalH = img.height;
 
-  let scaledW = width * 0.7;
+  let scaledW = width * 0.5;
   let scaledH = originalH * (scaledW / originalW);
 
   let cx = width / 2;
