@@ -34,6 +34,7 @@ const SNAP_THRESHOLD = 30;
 
 let img_drag;
 let img_final;
+let img_name
 
 let intensityResult = null;
 let isRadarAnimating = false;
@@ -1633,9 +1634,9 @@ function loading_4(){
   textAlign(CENTER, CENTER);
   textSize(rh(MEDIUM_TEXT_SIZE));
   text(
-    "당신의 소원에 따른 별자리를 찾는 중입니다",
+    "당신의 소원에 따른 별자리를 찾는 중입니다...",
     width / 2,
-    height * 0.4
+    height * 0.5
   );
   // loadingUI("bottom");
   if (!hasCalledLLM) {
@@ -1763,9 +1764,12 @@ function createStarsTargets(drag_index) {
       { rx: 0.742, ry: 0.524 },
       { rx: 0.945, ry: 0.445 },
     ],
-  ];
+  ]; 
+
+  const starName = ["test", "백조자리", "북두칠성", "쌍둥이자리", "염소자리", "처녀자리"]
   img_drag = dragImage[drag_index][1]
   img_final = dragImage[drag_index][2]
+  img_name = starName[drag_index]
 
 
   return targets[drag_index];
@@ -1948,11 +1952,15 @@ function drag_stars() {
   renderStarsTargets();
   renderDragInstruction();
 
+  fill(255);
+  textSize(SMALL_TEXT_SIZE);
+  text(`당신의 별자리는 ${img_name}입니다`, width/2, height*0.1);
+
   if (checkStarsComplete() && !transitioning) {
     transitioning = true;
     goToLastMode();
   }
-}
+} 
 
 let lastEnteredAt = 0; //last 모드 진입 시각
 
