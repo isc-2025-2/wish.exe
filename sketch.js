@@ -1136,7 +1136,7 @@ function renderConstellationSample() {
   const maxX = width * 0.85;
   const minY = height * 0.1;
   const maxY = height * 0.55;
-  const starSize = rh(40);
+  const starSize = rh(55);
 
   if (!constellationSampleStarPositions) {
     constellationSampleStarPositions = [];
@@ -2440,6 +2440,11 @@ function hardResetToMain() {
   userInput = "";
   userInputs = [];
   back_stars = [];
+
+  if (inputBox) {
+    inputBox.remove();
+    inputBox = null;
+  }
 
   loadingProgress = 0;
   loadingStartTime = 0;
