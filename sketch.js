@@ -353,7 +353,7 @@ async function callLLM(systemPrompt, userText) {
     }),
   });
 
-  // await delay(10000);
+  await delay(10000);
 
   const data = await res.json();
   const reply = data.choices?.[0]?.message?.content ?? "(no reply)";
@@ -1420,7 +1420,7 @@ function loading_1() {
         emotionResult = JSON.parse(result).emotion;
         emotionResults[0] = emotionResult;
         collectedEmotions.push(emotionResult);
-        totalEmotions[emotionResult] += 10;
+        totalEmotions[emotionResult] += 5;
         messageResult = JSON.parse(result).message;
         stars.forEach((s) => {
           s.image = baseStarImages[emotionResult];
@@ -1475,7 +1475,7 @@ function loading_2() {
       try {
         emotionResult = JSON.parse(result).emotion;
         emotionResults[1] = emotionResult;
-        totalEmotions[emotionResult] += 10;
+        totalEmotions[emotionResult] += 5;
         collectedEmotions.push(emotionResult);
         messageResult = JSON.parse(result).message;
       } catch (e) {
@@ -1566,7 +1566,7 @@ function loading_3() {
         intensityResult = JSON.parse(result).intensity;
         emotionResults[2] = emotionResult;
         collectedEmotions.push(emotionResult);
-        totalEmotions[emotionResult] += 10;
+        totalEmotions[emotionResult] += 5;
         messageResult = JSON.parse(result).message;
       } catch (e) {
         console.error("JSON parse error:", result);
@@ -1678,7 +1678,7 @@ function loading_4() {
         intensityResult = JSON.parse(result).intensity;
         emotionResults[3] = emotionResult;
         collectedEmotions.push(emotionResult);
-        totalEmotions[emotionResult] += 10;
+        totalEmotions[emotionResult] += 5;
         messageResult = JSON.parse(result).message;
       } catch (e) {
         console.error("JSON parse error:", result);
@@ -2324,65 +2324,94 @@ function renderSavedStars() {
 }
 
 function radar_chart() {
-  //레이더 차트
-  stroke(200);
-  strokeWeight(1);
-  let x = width * 0.12;
-  let y = height * 0.8;
+  push();
 
-  for (let i = 0; i < 6; i++) {
-    let r1 = 100;
-    let r2 = 20;
+  drawingContext.shadowBlur = 10;
+  drawingContext.shadowColor = "rgba(253,190,2,0.6)";
 
-    let dx = r1 * cos(i * 72 - 90);
-    let dy = r1 * sin(i * 72 - 90);
+  textSize(rh(28));
+  fill(255);
+  textAlign(CENTER, CENTER);
+  text(
+    "모두의 감정이 모여,\n이곳에 하나의 별로 남았습니다.",
+    width * 0.12,
+    height * 0.57
+  );
 
-    line(x, y, x + dx, y + dy);
+  translate(width * 0.12, height * 0.8);
+  angleMode(DEGREES);
 
-    for (let j = 0; j < 5; j++) {
-      let dxax = r2 * cos(i * 72 - 90);
-      let dyax = r2 * sin(i * 72 - 90);
+  const axisCount = 5;
 
-      let nextdxax = r2 * cos((i + 1) * 72 - 90);
-      let nextdyax = r2 * sin((i + 1) * 72 - 90);
+  const baseSize = min(width, height);
+  const maxR = baseSize * 0.12;
+  const step = maxR / 5;
 
-      line(x + dxax, y + dyax, x + nextdxax, y + nextdyax);
-
-      r2 = r2 + 20;
+  strokeWeight(maxR * 0.01);
+  for (let r = step; r <= maxR; r += step) {
+    stroke(180, map(r, step, maxR, 40, 120));
+    noFill();
+    beginShape();
+    for (let i = 0; i < axisCount; i++) {
+      let a = i * 72 - 90;
+      vertex(r * cos(a), r * sin(a));
     }
+    endShape(CLOSE);
   }
 
-  let dx1 = currentEmotions[0] * cos(72 - 90);
-  let dy1 = currentEmotions[0] * sin(72 - 90);
+  stroke(160, 160, 190, 140);
+  strokeWeight(maxR * 0.008);
 
-  let dx2 = currentEmotions[1] * cos(2 * 72 - 90);
-  let dy2 = currentEmotions[1] * sin(2 * 72 - 90);
+  for (let i = 0; i < axisCount; i++) {
+    let a = i * 72 - 90;
+    line(0, 0, maxR * cos(a), maxR * sin(a));
 
-  let dx3 = currentEmotions[2] * cos(3 * 72 - 90);
-  let dy3 = currentEmotions[2] * sin(3 * 72 - 90);
-
-  let dx4 = currentEmotions[3] * cos(4 * 72 - 90);
-  let dy4 = currentEmotions[3] * sin(4 * 72 - 90);
-
-  let dx5 = currentEmotions[4] * cos(5 * 72 - 90);
-  let dy5 = currentEmotions[4] * sin(5 * 72 - 90);
+    noStroke();
+    fill(200);
+    circle(maxR * cos(a), maxR * sin(a), maxR * 0.04);
+  }
 
   noStroke();
-  fill("#FDBE02");
+  fill(253, 190, 2, 90);
   beginShape();
-  vertex(x + dx1, y + dy1);
-  vertex(x + dx2, y + dy2);
-  vertex(x + dx3, y + dy3);
-  vertex(x + dx4, y + dy4);
-  vertex(x + dx5, y + dy5);
-  vertex(x + dx1, y + dy1);
-  endShape();
+  for (let i = 0; i < axisCount; i++) {
+    let a = (i + 1) * 72 - 90;
 
-  text("Calm", x + 100, y - 30);
-  text("Sadness", x + 50, y + 100);
-  text("Hope", x - 80, y + 100);
-  text("Fear", x - 130, y - 30);
-  text("Happiness", x - 15, y - 107);
+    let value = constrain(currentEmotions[i], 0, 100);
+    let r = value * (maxR / 100);
+
+    vertex(r * cos(a), r * sin(a));
+  }
+  endShape(CLOSE);
+
+  stroke(253, 190, 2, 180);
+  strokeWeight(maxR * 0.015);
+  noFill();
+  beginShape();
+  for (let i = 0; i < axisCount; i++) {
+    let a = (i + 1) * 72 - 90;
+
+    let value = constrain(currentEmotions[i], 0, 100);
+    let r = value * (maxR / 100);
+
+    vertex(r * cos(a), r * sin(a));
+  }
+  endShape(CLOSE);
+
+  textAlign(CENTER, CENTER);
+  textSize(rh(SMALL_TEXT_SIZE));
+  fill(220);
+
+  const labels = ["차분함", "슬픔", "희망", "걱정", "행복"];
+
+  const labelOffset = maxR * 1.25;
+
+  for (let i = 0; i < axisCount; i++) {
+    let a = (i + 1) * 72 - 90;
+    text(labels[i], labelOffset * cos(a), labelOffset * sin(a));
+  }
+
+  pop();
 }
 
 function reset() {
