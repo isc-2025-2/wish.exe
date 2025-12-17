@@ -1087,6 +1087,7 @@ function intro_text() {
   } else if (textCount === 5) {
     renderConstellationSample();
   }
+  
 }
 
 function renderConstellationSample() {
@@ -1777,7 +1778,7 @@ function getTargetScreenPos(target) {
   let originalW = img_drag.width;
   let originalH = img_drag.height;
 
-  let scaledW = width * 0.7;
+  let scaledW = width * 0.5;
   let scaledH = originalH * (scaledW / originalW);
 
   let cx = width / 2;
@@ -1790,6 +1791,15 @@ function getTargetScreenPos(target) {
 }
 
 function mousePressed() {
+  if (homeBtn){
+      if (mouseX >= homeBtn.x && mouseX <= homeBtn.x + homeBtn.w &&
+          mouseY >= homeBtn.y && mouseY <= homeBtn.y + homeBtn.h) {
+            hardResetToMain();
+            return;
+    }
+  }
+  
+
   if (mode === "drag_stars") {
     for (let i = 0; i < stars.length; i++) {
       let s = stars[i];
@@ -1823,13 +1833,9 @@ function mousePressed() {
     ) {
       hardResetToMain();
     }
-  } else if (homeBtn){
-      if (mouseX >= homeBtn.x && mouseX <= homeBtn.x + homeBtn.w &&
-          mouseY >= homeBtn.y && mouseY <= homeBtn.y + homeBtn.h) {
-            hardResetToMain();
-            return;
-    }
   }
+
+
 }
 
 function snapIfStarClose() {
@@ -1910,7 +1916,7 @@ function draw_dragImage() {
     const originalW = img_drag.width;
     const originalH = img_drag.height;
 
-    const scaledW = width * 0.7;
+    const scaledW = width * 0.5;
     const scaledH = originalH * (scaledW / originalW);
 
     const cx = width / 2;
@@ -1926,7 +1932,7 @@ function draw_dragImage() {
 }
 
 function getDragImageXBounds() {
-  const scaledW = width * 0.7;
+  const scaledW = width * 0.5;
   const cx = width / 2;
 
   const startX = Math.floor(cx - scaledW / 2); // 시작 x좌표
@@ -2050,11 +2056,11 @@ function draw_finalImage() {
     const originalW = img_final.width;
     const originalH = img_final.height;
 
-    const scaledW = width * 0.7;
+    const scaledW = width * 0.4;
     const scaledH = originalH * (scaledW / originalW);
 
     const cx = width / 2;
-    const cy = height / 2;
+    const cy = height * 0.4;
 
     image(img_final, cx, cy, scaledW, scaledH);
   } else {
@@ -2065,11 +2071,55 @@ function draw_finalImage() {
   }
 }
 
+function resizeImage(img, scaleW, centerY) {
+  const originalW = img.width;
+  const originalH = img.height;
+
+  const scaledW = width * scaleW;
+  const scaledH = originalH * (scaledW / originalW);
+
+  const cx = width / 2;
+  const cy = centerY;
+
+  const left = cx - scaledW / 2;
+  const top  = cy - scaledH / 2;
+
+  return { cx, cy, scaledW, scaledH, left, top };
+}
+
+function draw_finalStars(){
+  if (!img_drag || !img_final) return;
+
+  const dragRect  = resizeImage(img_drag, 0.5, height / 2);
+  const finalRect = resizeImage(img_final, 0.4, height * 0.4);
+
+  for (let i = 0; i < revealedStars; i++) {
+    const s = stars[i];
+    if (!s || !s.image) continue;
+
+    const rx = (s.x - dragRect.left) / dragRect.scaledW;
+    const ry = (s.y - dragRect.top)  / dragRect.scaledH;
+
+    const x = finalRect.left + rx * finalRect.scaledW;
+    const y = finalRect.top  + ry * finalRect.scaledH;
+
+    if (s.popProgress < 1) {
+      s.popProgress = min(1, s.popProgress + 0.08);
+    }
+
+    const scale = popEase(s.popProgress);
+    const sizeScale = s.sizeScale ?? 1;
+    const baseSize = rh(40 * scale * sizeScale);
+
+    drawImageAspect(s.image, x, y, baseSize, baseSize);
+  }
+}
+
 function last() {
   //최종화면
   backgroundStar();
   draw_finalImage();
-  renderMainStars();
+  draw_finalStars();
   push();
 
   textAlign(CENTER, CENTER);
@@ -2153,7 +2203,7 @@ function drawForCapture(layer) {
     const originalW = img_final.width;
     const originalH = img_final.height;
 
-    const scaledW = width * 0.7;
+    const scaledW = width * 0.5;
     const scaledH = originalH * (scaledW / originalW);
 
     const cx = width / 2;
@@ -2220,7 +2270,7 @@ function renderSavedStars() {
     const backY = height * yValues[distFromCenter];
 
     push();
-    tint(255, 180);
+    tint(255, 70);
     const drawW = backImg.width * 0.4;
     const drawH = backImg.height * 0.4;
     image(backImg, backX, backY, drawW, drawH);
@@ -2315,21 +2365,21 @@ function reset() {
 
 function interrupt(){
   push();
-  textAlign(LEFT, TOP);
+  textAlign(RIGHT, TOP);
   fill(255);
   noStroke();
 
-  const x = rw(24);
+  const x = width - rw(24);
   const y = rh(18);
-  const fontSize = max(14, rh(22));
+  const fontSize = max(18, rh(30));
 
   textSize(fontSize);
   const label = "처음으로";
   text(label, x, y);
 
-  // 클릭 판정용 박스 저장
   homeBtn = {
-    x, y,
+    x: x - textWidth(label),
+    y: y,
     w: textWidth(label),
     h: textAscent() + textDescent()
   };
