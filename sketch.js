@@ -25,6 +25,13 @@ let factLoading = null;
 let mythLoading = null;
 let transitioning = false;
 
+// OpenAI API Key (runtime)
+let openaiApiKey = "";
+let apiKeyBox = null;
+let showApiKeyWarning = false;
+let apiKeyWarningStartTime = 0;
+let llmError = null;
+
 let stars = []; //starsLoc
 
 let drag_index;
@@ -157,7 +164,6 @@ const lumMapping = {
   4: "강렬하게",
 };
 
-const LLM_API_URL = "https://p5-llm-server.vercel.app/api/llm";
 const UPLOAD_API_URL = "https://p5-llm-server.vercel.app/api/upload";
 
 const SYSTEM_PROMPT = `
@@ -340,25 +346,52 @@ async function callLLM(systemPrompt, userText) {
   if (isCallingLLM) return;
   isCallingLLM = true;
   console.log("CALLING LLM");
-  const res = await fetch(LLM_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userText },
-      ],
-    }),
-  });
+  llmError = null;
 
-  await delay(10000);
+  try {
+    if (!openaiApiKey) {
+      throw new Error("OpenAI API Key가 설정되지 않았습니다.");
+    }
 
-  const data = await res.json();
-  const reply = data.choices?.[0]?.message?.content ?? "(no reply)";
-  isCallingLLM = false;
-  return reply;
+    const messages = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userText },
+    ];
+
+    const openaiRes = await fetch(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openaiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4.1-mini",
+          messages,
+        }),
+      }
+    );
+
+    await delay(10000);
+
+    if (!openaiRes.ok) {
+      const errText = await openaiRes.text().catch(() => "");
+      throw new Error(
+        `OpenAI 요청 실패 (${openaiRes.status})${errText ? `: ${errText}` : ""}`
+      );
+    }
+
+    const data = await openaiRes.json();
+    const reply = data.choices?.[0]?.message?.content ?? "(no reply)";
+    return reply;
+  } catch (e) {
+    llmError = e?.message ?? String(e);
+    console.error("LLM error:", e);
+    return null;
+  } finally {
+    isCallingLLM = false;
+  }
 }
 
 function delay(ms) {
@@ -659,12 +692,18 @@ function setup() {
     backgroundMusic.setLoop(true);
     backgroundMusic.setVolume(0.5);
   }
+
+  // API Key는 런타임(메모리)에만 저장: 새로고침 시 다시 입력
+  mode = openaiApiKey ? mode : "api_key";
 }
 
 function draw() {
   backgroundStar();
 
   switch (mode) {
+    case "api_key":
+      api_key();
+      break;
     case "main":
       main_frame();
       break;
@@ -784,6 +823,8 @@ function keyPressed() {
     } else {
       mode = "question_1"; // 마지막 문장 보고 나면 다음 화면으로
     }
+  } else if (keyCode === ENTER && mode === "api_key") {
+    submitApiKey();
   } else if (keyCode === ENTER && mode === "question_1") {
     input_1();
   } else if (keyCode === ENTER && mode === "question_2") {
@@ -796,11 +837,102 @@ function keyPressed() {
 
   if (
     keyCode === ESCAPE ||
-    (keyCode === BACKSPACE && !mode.startsWith("question_"))
+    (keyCode === BACKSPACE &&
+      !mode.startsWith("question_") &&
+      mode !== "api_key")
   ) {
     handleBack();
     return false;
   }
+}
+
+function isApiKeyEmpty() {
+  if (!apiKeyBox) return true;
+  const value = apiKeyBox.value().trim();
+  return value === "";
+}
+
+function drawApiKeyWarning() {
+  if (!showApiKeyWarning) return;
+
+  const DURATION = 1500;
+  if (millis() - apiKeyWarningStartTime > DURATION) {
+    showApiKeyWarning = false;
+    return;
+  }
+
+  const x = width / 2;
+  const y = height * 0.75;
+
+  push();
+  fill(255, 80, 80);
+  textAlign(CENTER, CENTER);
+  textSize(rh(SMALL_TEXT_SIZE));
+  text("API Key를 입력한 뒤 Enter를 눌러주세요.", x, y);
+  pop();
+}
+
+function submitApiKey() {
+  if (isApiKeyEmpty()) {
+    showApiKeyWarning = true;
+    apiKeyWarningStartTime = millis();
+    return;
+  }
+  showApiKeyWarning = false;
+
+  openaiApiKey = apiKeyBox.value().trim();
+
+  apiKeyBox.remove();
+  apiKeyBox = null;
+  llmError = null;
+  mode = "main";
+}
+
+function api_key() {
+  // Title 이전에 API Key 입력
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(rh(MEDIUM_TEXT_SIZE));
+  text("OpenAI API Key를 입력해주세요", width / 2, height * 0.35);
+
+  textSize(rh(SMALL_TEXT_SIZE));
+  fill(200);
+  text(
+    "이 키는 이 실행(런타임) 동안에만 메모리에 보관됩니다.\n입력 후 Enter를 누르면 시작돼요.",
+    width / 2,
+    height * 0.43
+  );
+
+  if (llmError) {
+    fill(255, 120, 120);
+    textSize(rh(SMALL_TEXT_SIZE));
+    text(`오류: ${llmError}`, width / 2, height * 0.6);
+  }
+
+  // 입력 UI (DOM)
+  if (!apiKeyBox) {
+    apiKeyBox = createInput("", "password");
+
+    const w = 600;
+    const h = 60;
+    const x = (width - w) / 2;
+    const y = height * 0.5;
+
+    apiKeyBox.position(x, y);
+    apiKeyBox.size(w, h);
+    apiKeyBox.style("font-size", `${rh(SMALL_TEXT_SIZE)}px`);
+    apiKeyBox.style("color", "white");
+    apiKeyBox.style("text-align", "center");
+    apiKeyBox.style("background", "rgba(0,0,0,0.25)");
+    apiKeyBox.style("outline", "none");
+    apiKeyBox.style("border", "1px solid rgba(255,255,255,0.35)");
+    apiKeyBox.style("border-radius", "10px");
+    apiKeyBox.style("font-family", "pokemon");
+    apiKeyBox.attribute("placeholder", "sk-... (Enter)");
+    apiKeyBox.attribute("required", "true");
+  }
+
+  drawApiKeyWarning();
 }
 
 function handleBack() {
@@ -1423,6 +1555,11 @@ function loading_1() {
     hasCalledLLM = true;
     callLLM(SYSTEM_PROMPT, userInput).then(async (result) => {
       try {
+        if (!result) {
+          hasCalledLLM = false;
+          mode = "api_key";
+          return;
+        }
         emotionResult = JSON.parse(result).emotion;
         emotionResults[0] = emotionResult;
         collectedEmotions.push(emotionResult);
@@ -1479,6 +1616,11 @@ function loading_2() {
     hasCalledLLM = true;
     callLLM(SYSTEM_PROMPT, userInput).then(async (result) => {
       try {
+        if (!result) {
+          hasCalledLLM = false;
+          mode = "api_key";
+          return;
+        }
         emotionResult = JSON.parse(result).emotion;
         emotionResults[1] = emotionResult;
         totalEmotions[emotionResult] += 5;
@@ -1568,6 +1710,11 @@ function loading_3() {
     hasCalledLLM = true;
     callLLM(LUM_SYSTEM_PROMPT, userInput).then(async (result) => {
       try {
+        if (!result) {
+          hasCalledLLM = false;
+          mode = "api_key";
+          return;
+        }
         emotionResult = JSON.parse(result).emotion;
         intensityResult = JSON.parse(result).intensity;
         emotionResults[2] = emotionResult;
@@ -1680,6 +1827,11 @@ function loading_4() {
     hasCalledLLM = true;
     callLLM(LUM_SYSTEM_PROMPT, userInput).then(async (result) => {
       try {
+        if (!result) {
+          hasCalledLLM = false;
+          mode = "api_key";
+          return;
+        }
         emotionResult = JSON.parse(result).emotion;
         intensityResult = JSON.parse(result).intensity;
         emotionResults[3] = emotionResult;
